@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": false,
+    "types": [
+      "node"
+    ],
+    "outDir": "lib",
+    "rootDir": ".."
+  },
+  "include": [
+    "src/**/*.ts",
+    "../lib/trip.ts"
+  ]
+}

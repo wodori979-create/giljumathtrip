@@ -1,0 +1,10 @@
+{
+  "indexes":[],
+  "fieldOverrides":[
+    {"collectionGroup":"photos","fieldPath":"bytes","indexes":[]},
+    {"collectionGroup":"tripClasses","fieldPath":"tripData","indexes":[]},
+    {"collectionGroup":"tripClasses","fieldPath":"password","indexes":[]},
+    {"collectionGroup":"tripClasses","fieldPath":"vapidPrivate","indexes":[]},
+    {"collectionGroup":"subscriptions","fieldPath":"subscription","indexes":[]}
+  ]
+}

@@ -1,0 +1,81 @@
+/* The app uses the title's Jua face consistently, including controls and times. */
+html,body,body *,body *::before,body *::after{font-family:'Jua',sans-serif!important}
+.schedule-v3 .event{display:block;padding-left:23px;min-width:0}
+.event-content{width:100%;min-width:0}
+.event-line{display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:baseline;column-gap:16px;min-height:42px}
+.schedule-v3 .event-line time,.schedule-v3 .event-line h3{margin:0;padding:0;min-width:0;font-size:19px;line-height:1.5;align-self:baseline;font-weight:400;letter-spacing:-.025em}
+.schedule-v3 .event-line h3{overflow-wrap:anywhere}
+.schedule-v3 .event-line .event-icon{padding:9px;align-self:center}
+.event-details{margin-left:70px;min-width:0;padding-top:3px}
+.event-details>p{font-size:13px;color:#85967c;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.event-details .map-text{font-size:12px;margin-top:8px}
+.event-gather{display:flex;align-items:start;gap:7px;padding:10px 12px;background:#eff6e9;border:1px solid #e3eddc;border-radius:9px;color:#668e79;margin-top:13px;line-height:1.7}
+.event-gather>svg{margin-top:3px}
+.event-gather>span{font-size:13px;overflow-wrap:anywhere}
+.event-gather b{font-size:11px;display:block;color:#9baa8b;font-weight:400;margin-bottom:2px}
+.schedule-mission-summary{margin-top:14px;background:#fff9e8;border:1px solid #eee5c8;border-radius:11px;padding:12px 14px}
+.schedule-mission-summary>span{display:flex;align-items:center;gap:6px;font-size:12px;color:#b29347}
+.schedule-mission-summary>p{font-size:14px;color:#6e785e;line-height:1.8;margin-top:6px;overflow-wrap:anywhere}
+.schedule-mission-summary>.text-btn{font-size:11px;color:var(--teal);margin-top:4px}
+.schedule-v3 .event-editor{width:100%;margin-left:0}
+.mission-day-tabs{display:flex;gap:8px;max-width:480px;margin-bottom:23px}
+.mission-day-tabs>button{flex:1;background:#f0f2e9;border-radius:9px;padding:10px 8px;color:#96a187;font-size:14px;min-height:42px}
+.mission-day-tabs>.active{background:var(--teal);color:white}
+.mission-task-list{display:flex;flex-direction:column;gap:22px;min-width:0}
+.mission-task{padding:25px 29px;min-width:0}
+.mission-task-meta{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-bottom:17px}
+.mission-task-meta>span:not(.pill){font-size:12px;color:#9ca68e}
+.mission-task-meta>.pill:last-child{margin-left:auto;font-size:11px}
+.mission-task>h2{display:flex;align-items:baseline;gap:9px;font-size:23px;font-weight:400;overflow-wrap:anywhere}
+.mission-task>h2>svg{align-self:center;color:#c2a75b}
+.mission-description{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:1.9;color:#8a997e;margin:12px 0 23px}
+.mission-task .photo-picker{margin-top:21px;margin-bottom:13px}
+.mission-task .photo-upload{min-height:150px}
+.mission-task .field-label{font-size:14px}
+.mission-task .photo-upload>b{font-size:16px}
+.mission-task .photo-upload>span{font-size:12px}
+.mission-task .photo-picker>.place-photo{max-height:350px}
+.mission-task .mission-check{font-size:14px;min-height:42px;margin-top:7px}
+.submission-note{font-size:12px;color:#9cab8e;margin-top:10px}
+.submission-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px;margin-top:21px}
+.submission-gallery figure{margin:0;min-width:0}
+.submission-gallery img{width:100%;height:250px;object-fit:contain;border-radius:12px;background:#f2f1e6}
+.submission-gallery figcaption{font-size:12px;color:#a0aa91;text-align:center;margin-top:9px;line-height:1.7}
+.mission-submissions>.empty{display:flex;flex-direction:column;align-items:center;gap:13px;border:1px dashed #dfe8d5;background:#fafbf5;border-radius:12px;margin-top:20px;padding:25px}
+.mission-empty{display:flex;flex-direction:column;gap:13px;align-items:center;padding:45px 25px}
+.mission-empty h2{font-size:21px;font-weight:400}.mission-empty p{font-size:14px}
+.latest-notice{overflow:hidden}
+.latest-notice-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line);background:#fffdf6}
+.latest-notice-heading>span{display:flex;align-items:center;gap:7px;color:var(--teal);font-size:15px}
+.latest-notice-heading>time{font-size:12px;color:#a7b097}
+.latest-notice .meeting-info-panel>h2{font-weight:400}
+.inbox-empty h2{font-weight:400}.inbox-empty p{font-size:14px!important}
+.tab-icon{display:inline-flex;align-items:center;justify-content:center;position:relative}
+.tab-icon>i{position:absolute;right:-6px;top:-2px;width:7px;height:7px;border-radius:50%;background:var(--coral);box-shadow:0 0 0 2px #fffef9}
+.app-header,.mission-task,.latest-notice,.gather-preview{min-width:0}
+@media(max-width:1100px){.mission-task{padding:24px}.event-line{grid-template-columns:47px minmax(0,1fr) auto;column-gap:13px}.event-details{margin-left:60px}.schedule-v3 .event-line time,.schedule-v3 .event-line h3{font-size:18px}.submission-gallery img{height:220px}}
+@media(max-width:760px){
+ .page-heading h1{font-size:25px;font-weight:400}.page-heading p{font-size:12px;line-height:1.9}.page-heading .eyebrow{font-size:9px;letter-spacing:.09em}
+ .page-heading>.button{font-size:12px;padding:8px 10px}
+ .schedule-v3{padding:22px 19px}.schedule-v3 .event{padding-left:16px;padding-bottom:29px}
+ .event-line{grid-template-columns:42px minmax(0,1fr) auto;column-gap:10px;min-height:38px}
+ .schedule-v3 .event-line time,.schedule-v3 .event-line h3{font-size:16px;line-height:1.55;font-weight:400}
+ .schedule-v3 .event-line .event-icon{padding:7px}.schedule-v3 .event-line .event-icon>svg{width:17px;height:17px}
+ .event-details{margin-left:52px;padding-top:2px}.event-details>p{font-size:11px;line-height:1.9}.event-details .map-text{font-size:10px;gap:3px}
+ .event-gather{padding:9px;gap:6px;margin-top:11px;line-height:1.7}.event-gather>svg{width:13px;height:13px;margin-top:2px}.event-gather>span{font-size:12px}.event-gather b{font-size:10px;margin-bottom:3px}
+ .schedule-mission-summary{padding:10px;margin-top:12px}.schedule-mission-summary>span{font-size:10px;gap:5px}.schedule-mission-summary>span>svg{width:13px}.schedule-mission-summary>p{font-size:12px;line-height:1.8}.schedule-mission-summary>.text-btn{font-size:10px;min-height:32px}
+ .schedule-v3 .event-editor{width:100%;margin-left:0;padding:13px}.event-editor .field input,.event-editor .field textarea{font-size:16px}
+ .mission-day-tabs{gap:7px;margin-bottom:19px}.mission-day-tabs>button{font-size:14px;min-height:40px;padding:9px 5px}
+ .mission-task{padding:21px 19px}.mission-task-meta{gap:7px;margin-bottom:15px}.mission-task-meta>span:not(.pill){font-size:11px;line-height:1.7}.mission-task-meta>.pill{font-size:10px}.mission-task-meta>.pill:last-child{font-size:10px}
+ .mission-task>h2{font-size:21px;gap:8px;line-height:1.6}.mission-task>h2>svg{width:20px}.mission-description{font-size:14px;line-height:1.9;margin:11px 0 20px}
+ .mission-task .photo-upload{min-height:145px}.mission-task .photo-upload>b{font-size:15px}.mission-task .photo-upload>span{font-size:11px;line-height:1.8}.mission-task .field-label{font-size:13px}.mission-task .photo-picker>.place-photo{max-height:300px}
+ .mission-task .mission-check{font-size:13px}.mission-task .photo-picker>.text-btn{font-size:12px;min-height:35px}.submission-note{font-size:11px;line-height:1.9}
+ .submission-gallery{grid-template-columns:minmax(0,1fr);gap:18px}.submission-gallery img{height:auto;max-height:320px;object-fit:contain}.submission-gallery figcaption{font-size:11px}.mission-empty h2{font-size:19px}.mission-empty p{font-size:12px;line-height:1.8}
+ .latest-notice-heading{padding:15px 17px;flex-wrap:wrap;gap:7px}.latest-notice-heading>span{font-size:14px}.latest-notice-heading>time{font-size:10px;margin-left:auto}
+ .latest-notice .student-meeting{padding:15px}.latest-notice .meeting-info-panel>h2{font-size:23px}.latest-notice .meeting-message{font-size:14px;line-height:1.9}
+ .inbox-empty h2{font-size:20px}.inbox-empty p{font-size:12px!important;line-height:1.9}.mobile-nav>button{font-size:13px;font-weight:400}
+ .section-title h2{font-size:17px;font-weight:400}.day-tabs>button{font-size:14px}.day-tabs span{font-size:10px}.photo-notice>h2{font-weight:400}.photo-notice>p{font-size:14px}
+}
+@media(max-width:370px){.schedule-v3{padding:20px 15px}.event-line{grid-template-columns:39px minmax(0,1fr) auto;column-gap:8px}.event-details{margin-left:47px}.schedule-v3 .event-line time,.schedule-v3 .event-line h3{font-size:15px}.mission-task{padding:20px 17px}}
+.student-meeting.no-photo{grid-template-columns:minmax(0,1fr)}
+.student-meeting.no-photo .meeting-info-panel{padding:3px 5px 10px}
