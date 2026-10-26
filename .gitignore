@@ -1,0 +1,15 @@
+node_modules/
+functions/node_modules/
+dist/
+functions/lib/
+.firebase/
+.env*
+functions/.env*
+*.pem
+*-debug.log*
+*.tsbuildinfo
+work/
+outputs/
+service-account*.json
+*-firebase-adminsdk-*.json
+.DS_Store
