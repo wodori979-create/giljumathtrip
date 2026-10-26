@@ -5,7 +5,7 @@ export type Meeting = { place: string; photoUrl: string; time: string; note: str
 export type Trip = { className: string; teacherName: string; title: string; startDate: string; activeDay: number; meeting: Meeting; days: Event[][] };
 export type Alert = Meeting & { id: string; created: number; read?: boolean; readCount?: number };
 export type MissionSubmission = { id: string; missionId: string; photoUrl: string; submitted: number };
-export type State = { role: 'student'|'teacher'; code: string; trip: Trip; alerts: Alert[]; completedMissions: string[]; missionSubmissions: MissionSubmission[]; vapidPublic: string; studentCount: number; subscriberCount: number; pushEnabled: boolean };
+export type State = { role: 'student'|'teacher'; code: string; trip: Trip; alerts: Alert[]; completedMissions: string[]; missionSubmissions: MissionSubmission[]; studentCount: number };
 const event = (time: string, title: string, icon: string, place = '', address = '', note = '', missions: Mission[] = [], gatherPlace = ''): Event => ({id: `${time}-${title}`,time,title,icon,place,gatherPlace,address,note,missions});
 export const defaultTrip: Trip = {
  className:'6학년 2반',teacherName:'담임 선생님',title:'함께라서 더 즐거운 수학여행',startDate:'',activeDay:1,

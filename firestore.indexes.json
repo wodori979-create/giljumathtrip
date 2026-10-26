@@ -1,6 +1,10 @@
 {
   "indexes":[],
   "fieldOverrides":[
+    {"collectionGroup":"photos","fieldPath":"photoData","indexes":[]},
+    {"collectionGroup":"submissions","fieldPath":"photoData","indexes":[]},
+    {"collectionGroup":"sparkTrips","fieldPath":"daysJson","indexes":[]},
+    {"collectionGroup":"sparkTrips","fieldPath":"missionIds","indexes":[]},
     {"collectionGroup":"photos","fieldPath":"bytes","indexes":[]},
     {"collectionGroup":"tripClasses","fieldPath":"tripData","indexes":[]},
     {"collectionGroup":"tripClasses","fieldPath":"password","indexes":[]},

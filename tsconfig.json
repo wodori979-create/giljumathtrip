@@ -26,9 +26,8 @@
     ]
   },
   "include": [
-    "app/main.tsx",
-    "app/trip-app.tsx",
-    "lib/trip.ts",
+    "app/**/*.tsx",
+    "lib/**/*.ts",
     "vite.config.ts"
   ]
 }
