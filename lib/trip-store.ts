@@ -125,6 +125,7 @@ export async function api(path:string,body?:any):Promise<any> {
     const {code,user,ref}=context();
     if(path==='logout') {if(user.isAnonymous){await disablePush(code);await deleteDoc(item(code,'members',user.uid));}localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}
     if(path==='settings') {const trip={...body.trip,className:classroomByCode(code)!.name} as Trip;await updateDoc(ref,{...encodeTrip(trip,photoId(code,trip.meeting.photoUrl)),updatedAt:serverTimestamp()});return {ok:true};}
+    if(path==='meeting/save') {const meeting=meetingData(body,photoId(code,body.photoUrl||''));await updateDoc(ref,{meeting,updatedAt:serverTimestamp()});return {ok:true};}
     if(path==='broadcast') {
       const meeting=meetingData(body,photoId(code,body.photoUrl||'')),id=crypto.randomUUID(),batch=writeBatch(db);
       batch.set(item(code,'alerts',id),{...meeting,createdAt:serverTimestamp()});batch.update(ref,{meeting,updatedAt:serverTimestamp()});await batch.commit();return {ok:true,alertId:id,push:await sendPush(code,id)};
@@ -143,7 +144,7 @@ export async function api(path:string,body?:any):Promise<any> {
       });return {ok:true};
     }
     if(path.startsWith('alert/')) {
-      const id=path.slice(6),snapshot=await getDoc(item(code,'alerts',id));check(snapshot.exists(),'소집 안내를 찾을 수 없어요.');const a=snapshot.data();
+      const id=path.slice(6),snapshot=await getDoc(item(code,'alerts',id));check(snapshot.exists(),'집합 안내를 찾을 수 없어요.');const a=snapshot.data();
       return {id,place:a.place,time:a.time,note:a.note,photoUrl:await resolvePhoto(code,a.photoId),created:milliseconds(a.createdAt),read:(await getDoc(item(code,'receipts',id+'_'+user.uid))).exists()} as Alert;
     }
     throw new Error('요청을 찾을 수 없어요.');

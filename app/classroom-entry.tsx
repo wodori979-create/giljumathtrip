@@ -20,6 +20,6 @@ export default function ClassroomEntry({role,busy,error,onClose,onEnter,onResetE
         <button className="button teal full" disabled={busy}>{busy?<LoaderCircle className="spin" size={18}/>:<ArrowRight size={18}/>} {busy?'교실 문을 열고 있어요…':room.name+' 입장하기'}</button>
       </form>
     </>}
-    <div className="classroom-privacy"><LockKeyhole size={13}/><span>일정·미션·소집 안내는 반마다 따로 보관해요.</span></div>
+    <div className="classroom-privacy"><LockKeyhole size={13}/><span>일정·미션·집합 안내는 반마다 따로 보관해요.</span></div>
   </section></div>;
 }

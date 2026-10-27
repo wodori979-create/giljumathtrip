@@ -32,7 +32,7 @@ export function validateTrip(raw:Trip):Trip {
 export const missionIds=(trip:Trip)=>trip.days.flatMap(day=>day.flatMap(event=>event.missions.map(m=>m.id)));
 export function meetingData(input:any,photoId='') {
   const place=text(input.place,100),time=text(input.time,5),note=text(input.note,200);
-  check(place,'소집 장소를 입력해 주세요.');check(/^([01]\d|2[0-3]):[0-5]\d$/.test(time),'모이는 시간을 확인해 주세요.');
+  check(place,'집합 장소를 입력해 주세요.');check(/^([01]\d|2[0-3]):[0-5]\d$/.test(time),'모이는 시간을 확인해 주세요.');
   return {place,time,note,photoId};
 }
 export function encodeTrip(input:Trip,photoId='') {

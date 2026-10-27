@@ -79,14 +79,14 @@ export function createHandler(overrides: Partial<Dependencies> = {}) {
       if (!token) throw new HttpError(401, '교사 로그인이 필요해요.');
       let identity: Identity;
       try {identity = await deps.verify(token, env.FIREBASE_PROJECT_ID);} catch {throw new HttpError(401, '교사 로그인을 다시 확인해 주세요.');}
-      if (identity.provider !== 'password') throw new HttpError(403, '선생님만 소집 알림을 보낼 수 있어요.');
+      if (identity.provider !== 'password') throw new HttpError(403, '선생님만 집합 알림을 보낼 수 있어요.');
       if (Number(request.headers.get('Content-Length')) > 4096) throw new HttpError(413, '요청이 너무 커요.');
       const bodyText = await request.text();
       if (new TextEncoder().encode(bodyText).length > 4096) throw new HttpError(413, '요청이 너무 커요.');
       let body: {code?: string; alertId?: string; pageToken?: string};
       try {body = JSON.parse(bodyText);} catch {throw new HttpError(400, '요청 형식을 확인해 주세요.');}
       if (!body || typeof body !== 'object' || !/^[A-Z2-9]{8}$/.test(body.code || '') || !validAlert(body.alertId) ||
-        (body.pageToken !== undefined && (typeof body.pageToken !== 'string' || body.pageToken.length > 2048))) throw new HttpError(400, '반 코드와 소집 안내를 확인해 주세요.');
+        (body.pageToken !== undefined && (typeof body.pageToken !== 'string' || body.pageToken.length > 2048))) throw new HttpError(400, '반 코드와 집합 안내를 확인해 주세요.');
       const {code, alertId} = body;
       const root = `projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents`;
       const api = `https://firestore.googleapis.com/v1/${root}`;
@@ -104,9 +104,9 @@ export function createHandler(overrides: Partial<Dependencies> = {}) {
       stage='class';const base = await get('/' + path);
       if (!base || text(base, 'ownerUid') !== identity.uid) throw new HttpError(403, '이 반의 선생님만 알림을 보낼 수 있어요.');
       stage='alert';const alert = await get(`/${path}/alerts/${alertId}`);
-      if (!alert || !Number.isFinite(time(alert, 'createdAt')) || deps.now() - time(alert, 'createdAt') > 600000 || time(alert, 'createdAt') > deps.now() + 30000) throw new HttpError(400, '10분이 지난 안내예요. 새 소집 안내를 보내 주세요.');
+      if (!alert || !Number.isFinite(time(alert, 'createdAt')) || deps.now() - time(alert, 'createdAt') > 600000 || time(alert, 'createdAt') > deps.now() + 30000) throw new HttpError(400, '10분이 지난 안내예요. 새 집합 안내를 보내 주세요.');
       const place = text(alert, 'place'), meetingTime = text(alert, 'time'), note = text(alert, 'note');
-      if (!place || place.length > 100 || note.length > 200 || !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(meetingTime)) throw new HttpError(400, '소집 안내 내용을 확인해 주세요.');
+      if (!place || place.length > 100 || note.length > 200 || !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(meetingTime)) throw new HttpError(400, '집합 안내 내용을 확인해 주세요.');
       const qs = new URLSearchParams({pageSize: '5', orderBy: '__name__'});
       if (body.pageToken) qs.set('pageToken', body.pageToken);
       stage='subscriptions';const list = await firestore(`/${path}/pushSubscriptions?${qs}`);
