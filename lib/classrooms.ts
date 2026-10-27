@@ -13,7 +13,7 @@ export function classroomById(id:unknown):Classroom {
   return room;
 }
 export function studentName(value:unknown) {
-  const name=typeof value==='string'?value.trim().replace(/\s+/g,' '):'';
+  const name=typeof value==='string'?value.normalize('NFC').trim().replace(/\s+/g,' '):'';
   if(!name||name.length>20||/[\u0000-\u001f\u007f]/.test(name))throw new Error('이름을 1~20자로 입력해 주세요.');
   return name;
 }
@@ -23,4 +23,17 @@ export async function teacherCredential(code:string,pin:unknown) {
   if(typeof pin!=='string'||!/^\d{4}$/.test(pin))throw new Error('교사용 비밀번호 4자리를 입력해 주세요.');
   const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('gilju-trip-teacher-v1:'+code+':'+pin));
   return Array.from(new Uint8Array(hash),v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+// The class and normalized name are the student's identity, as requested.
+// These generated credentials are not a secret password or proof of a real-world name.
+export async function studentCredential(code:string,value:unknown) {
+  if(!classroomByCode(code))throw new Error('우리 반을 선택해 주세요.');
+  const name=studentName(value);
+  const digest=async(text:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),v=>v.toString(16).padStart(2,'0')).join('');
+  const id=await digest('gilju-trip-student-v1:'+code+':'+name);
+  return {name,email:code.toLowerCase()+'.'+id.slice(0,48)+'@student.gilju-trip.invalid',password:await digest('gilju-trip-student-password-v1:'+code+':'+name)};
+}
+export function isStudentAccount(user:{isAnonymous:boolean;email:string|null}|null|undefined) {
+  return !!user&&(user.isAnonymous||!!user.email?.endsWith('@student.gilju-trip.invalid'));
 }

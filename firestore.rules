@@ -7,7 +7,12 @@ service cloud.firestore {
     function member(code) {
       return signed() && (owner(code) || exists(/databases/$(database)/documents/sparkTrips/$(code)/members/$(request.auth.uid)));
     }
-    function student(code) { return member(code) && request.auth.token.firebase.sign_in_provider == 'anonymous'; }
+    function studentIdentity(code) {
+      return signed() && (request.auth.token.firebase.sign_in_provider == 'anonymous'
+        || (request.auth.token.firebase.sign_in_provider == 'password'
+          && request.auth.token.email.matches('^' + code.lower() + '[.][a-f0-9]{48}@student[.]gilju-trip[.]invalid$')));
+    }
+    function student(code) { return member(code) && studentIdentity(code); }
     function short(s, length) { return s is string && s.size() <= length; }
     function image(s) { return short(s, 240023) && s.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$'); }
     function uuid(s) { return s is string && s.matches('^[a-f0-9-]{36}$'); }
@@ -46,7 +51,8 @@ service cloud.firestore {
         allow list: if owner(code);
         allow create, update: if signed() && uid == request.auth.uid
           && exists(/databases/$(database)/documents/sparkTrips/$(code))
-          && request.auth.token.firebase.sign_in_provider == 'anonymous'
+          && studentIdentity(code)
+          && (!fixedRoom(code) || request.auth.token.firebase.sign_in_provider == 'password')
           && request.resource.data.keys().hasOnly(['name','joinedAt']) && request.resource.data.joinedAt == request.time
           && (fixedRoom(code) ? name(request.resource.data.name) : (!('name' in request.resource.data) || name(request.resource.data.name)));
         allow delete: if signed() && (uid == request.auth.uid || (owner(code) && uid != base(code).ownerUid));

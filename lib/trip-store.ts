@@ -1,11 +1,12 @@
-import {onAuthStateChanged,signInWithEmailAndPassword,signInAnonymously,signOut} from 'firebase/auth';
+import {onAuthStateChanged,signInWithEmailAndPassword,signOut} from 'firebase/auth';
 import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,query,where,orderBy,documentId,startAfter,limit,serverTimestamp,writeBatch,runTransaction,onSnapshot,type DocumentData,type DocumentSnapshot,type QuerySnapshot,type Query} from 'firebase/firestore';
 import {auth,db,emulator} from './firebase-client';
 import {type State,type Trip,type Meeting,type Alert} from './trip';
 import {CLASS_CODE,MISSION_ID,MAX_PHOTO_BYTES,MAX_PHOTO_DATA,check,teacherEmail,encodeTrip,decodeTrip,meetingData} from './free-data';
 import {confirmationRoster} from './student-status';
 import {sendPush,disablePush} from './push';
-import {classroomByCode,classroomById,studentName,teacherCredential} from './classrooms';
+import {signInStudent} from './student-auth';
+import {classroomByCode,classroomById,studentName,teacherCredential,isStudentAccount} from './classrooms';
 
 const KEY='gilju-trip-classroom-v2';
 let leaving=false;
@@ -21,7 +22,7 @@ function friendly(error:any):Error {
   const messages:Record<string,string>={
     'auth/invalid-credential':'선택한 반의 교사용 비밀번호가 맞지 않아요.','auth/wrong-password':'선택한 반의 교사용 비밀번호가 맞지 않아요.',
     'auth/user-not-found':'아직 준비되지 않은 교실이에요. 로컬 교실 설정을 확인해 주세요.','auth/too-many-requests':'요청이 많아요. 잠시 후 다시 시도해 주세요.',
-    'auth/network-request-failed':'인터넷 연결을 확인해 주세요.','auth/operation-not-allowed':'로그인 설정을 확인해 주세요.',
+    'auth/network-request-failed':'인터넷 연결을 확인해 주세요.','auth/email-already-in-use':'같은 이름으로 입장 중이에요. 다시 눌러 주세요.','auth/operation-not-allowed':'로그인 설정을 확인해 주세요.',
     'permission-denied':'우리 반 참여 권한을 확인하지 못했어요. 반을 선택하고 다시 입장해 주세요.',
     'resource-exhausted':'무료 사용량 한도에 도달했어요. 잠시 후 다시 확인해 주세요.','unavailable':'인터넷 연결이 불안정해요. 다시 시도해 주세요.'
   };
@@ -106,11 +107,11 @@ export async function api(path:string,body?:any):Promise<any> {
       check(body.role==='teacher'||body.role==='student','학생 또는 선생님을 선택해 주세요.');
       const name=body.role==='student'?studentName(body.name):'',password=body.role==='teacher'?await teacherCredential(code,body.password):'';
       leaving=true;const previous=storedCode();
-      if(auth.currentUser?.isAnonymous&&classroomByCode(previous)){await disablePush(previous);await deleteDoc(item(previous,'members',auth.currentUser.uid));}
+      if(isStudentAccount(auth.currentUser)&&classroomByCode(previous))await disablePush(previous,{localOnly:true});
       if(auth.currentUser)await signOut(auth);localStorage.removeItem(KEY);photos.clear();photoRefs.clear();
       let joinedBase:DocumentSnapshot|undefined;
       if(body.role==='teacher') {await signInWithEmailAndPassword(auth,teacherEmail(code),password);const c=await getDoc(classRef(code));joinedBase=c;check(c.data()?.ownerUid===auth.currentUser!.uid,'교사용 입장 정보를 확인해 주세요.');}
-      else {const credential=await signInAnonymously(auth);try{await setDoc(item(code,'members',credential.user.uid),{name,joinedAt:serverTimestamp()});}catch(error){await signOut(auth);throw error;}}
+      else {const credential=await signInStudent(auth,code,name);try{const profile=item(code,'members',credential.user.uid);await runTransaction(db,async tx=>{const existing=await tx.get(profile);if(!existing.exists())tx.set(profile,{name,joinedAt:serverTimestamp()});else check(existing.data().name===name,'학생 이름을 확인해 주세요.');});}catch(error){await signOut(auth);throw error;}}
       localStorage.setItem(KEY,code);leaving=false;return await readState(joinedBase);
     }
     if(path==='session') {
@@ -130,14 +131,14 @@ export async function api(path:string,body?:any):Promise<any> {
     }
     if(path==='state')return readState();
     const {code,user,ref}=context();
-    if(path==='logout') {leaving=true;try{if(user.isAnonymous){await disablePush(code);await deleteDoc(item(code,'members',user.uid));}localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}catch(error){leaving=false;throw error;}}
+    if(path==='logout') {leaving=true;try{if(isStudentAccount(user))await disablePush(code,{localOnly:true});localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}catch(error){leaving=false;throw error;}}
     if(path==='members/remove') {
-      check(!user.isAnonymous,'선생님만 학생을 내보낼 수 있어요.');
+      check(!isStudentAccount(user),'선생님만 학생을 내보낼 수 있어요.');
       check(typeof body?.uid==='string'&&body.uid.length>0&&body.uid.length<=128&&!body.uid.includes('/')&&body.uid!==user.uid,'학생을 확인해 주세요.');
       const batch=writeBatch(db);batch.delete(item(code,'members',body.uid));batch.delete(item(code,'pushSubscriptions',body.uid));await batch.commit();return {ok:true};
     }
     if(path==='mission/submissions') {
-      check(!user.isAnonymous,'선생님만 제출 사진을 볼 수 있어요.');
+      check(!isStudentAccount(user),'선생님만 제출 사진을 볼 수 있어요.');
       check(typeof body?.missionId==='string'&&MISSION_ID.test(body.missionId),'미션을 확인해 주세요.');
       check(body.cursor==null||(typeof body.cursor==='string'&&body.cursor.length>0&&body.cursor.length<=256&&!body.cursor.includes('/')),'사진 페이지를 확인해 주세요.');
       const filters=[where('missionId','==',body.missionId),orderBy(documentId())];

@@ -4,6 +4,7 @@ import {initializeTestEnvironment} from '@firebase/rules-unit-testing';
 import {initializeApp,deleteApp} from 'firebase/app';
 import {getAuth,connectAuthEmulator,signInWithEmailAndPassword,signInAnonymously} from 'firebase/auth';
 import {getFirestore,connectFirestoreEmulator,doc,collection,getDoc,getDocs,setDoc,updateDoc,deleteDoc,serverTimestamp,terminate,writeBatch} from 'firebase/firestore';
+import {signInStudent} from '../lib/student-auth.ts';
 import {CLASSROOMS,teacherCredential,studentName} from '../lib/classrooms.ts';
 import {localPins,setupLocalClassrooms} from './setup-local-classrooms.mjs';
 
@@ -22,7 +23,7 @@ try {
     const t=client('teacher-'+room.id),s=client('student-'+room.id);
     await signInWithEmailAndPassword(t.auth,room.code.toLowerCase()+'@class.gilju-trip.invalid',await teacherCredential(room.code,pins[room.id]));
     assert.equal((await getDoc(path(t.db,room))).data().className,room.name);
-    const pupil=(await signInAnonymously(s.auth)).user;
+    const pupil=(await signInStudent(s.auth,room.code,'김여행')).user;
     await denied(getDoc(path(s.db,room)));
     await denied(setDoc(path(s.db,room,'members',pupil.uid),{joinedAt:serverTimestamp()}));
     await denied(setDoc(path(s.db,room,'members',pupil.uid),{name:' ',joinedAt:serverTimestamp()}));
@@ -74,7 +75,7 @@ try {
   await setDoc(path(s1,room1,'progress',uid1),{completedMissions:['food-photo'],updatedAt:serverTimestamp()});
   await denied(getDoc(path(t2,room1,'progress',uid1)));
   await setDoc(path(s1,room1,'pushSubscriptions',uid1),{endpoint:'https://fcm.googleapis.com/fcm/send/local-test',p256dh:'A'.repeat(87),auth:'B'.repeat(22),updatedAt:serverTimestamp()});
-  const sameClassPeer=client('peer-kick'),peerUid=(await signInAnonymously(sameClassPeer.auth)).user.uid;
+  const sameClassPeer=client('peer-kick'),peerUid=(await signInStudent(sameClassPeer.auth,room1.code,'다른 학생')).user.uid;
   await setDoc(path(sameClassPeer.db,room1,'members',peerUid),{name:'다른 학생',joinedAt:serverTimestamp()});
   await denied(deleteDoc(path(sameClassPeer.db,room1,'members',uid1)));await denied(deleteDoc(path(t2,room1,'members',uid1)));
   const removal=writeBatch(t1);removal.delete(path(t1,room1,'members',uid1));removal.delete(path(t1,room1,'pushSubscriptions',uid1));await removal.commit();

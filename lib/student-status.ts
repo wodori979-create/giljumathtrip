@@ -1,6 +1,6 @@
 import type {StudentIdentity} from './trip';
 
-// Match Firebase UIDs rather than names: classmates may share the same name.
+// Each class/name now signs into one stable Firebase UID; receipts use that shared UID.
 export function confirmationRoster(students:StudentIdentity[],confirmedUids:string[]){
   const confirmed=new Set(confirmedUids);
   return {
