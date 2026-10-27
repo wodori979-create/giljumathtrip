@@ -1,7 +1,7 @@
 import {itineraryDays} from './itinerary.ts';
 export const APP_NAME = '길주초 6학년, 여행중!';
 export type Mission = { id: string; title: string; description: string };
-export type Event = { id: string; time: string; title: string; place: string; gatherPlace: string; address: string; note: string; icon: string; missions: Mission[] };
+export type Event = { id: string; time: string; title: string; place: string; gatherPlace: string; address: string; note: string; icon: string; lodging?:string; missions: Mission[] };
 export type Meeting = { place: string; photoUrl: string; time: string; note: string };
 export type Trip = { className: string; teacherName: string; title: string; startDate: string; activeDay: number; meeting: Meeting; days: Event[][] };
 export type StudentIdentity = {uid:string;name:string};

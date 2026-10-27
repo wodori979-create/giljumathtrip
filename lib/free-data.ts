@@ -21,7 +21,7 @@ export function validateTrip(raw:Trip):Trip {
       check(/^([01]\d|2[0-3]):[0-5]\d$/.test(event.time),'일정 시간을 확인해 주세요.');
       const title=text(event.title,100);check(title,'일정 이름을 입력해 주세요.');
       check(event.missions.length<=8,'일정별 미션은 8개까지 추가할 수 있어요.');
-      return {...event,id:text(event.id,100),title,place:text(event.place,100),gatherPlace:text(event.gatherPlace||'',150),address:text(event.address||'',200),note:text(event.note,200),icon:text(event.icon,20),missions:event.missions.map(m=>{
+      return {...event,...(event.lodging!==undefined?{lodging:text(event.lodging,100)}:{}),id:text(event.id,100),title,place:text(event.place,100),gatherPlace:text(event.gatherPlace||'',150),address:text(event.address||'',200),note:text(event.note,200),icon:text(event.icon,20),missions:event.missions.map(m=>{
         const id=text(m.id,100),title=text(m.title,100);check(MISSION_ID.test(id)&&!ids.has(id)&&title,'미션 이름과 고유 번호를 확인해 주세요.');ids.add(id);
         return {id,title,description:text(m.description,1000)};
       })};
