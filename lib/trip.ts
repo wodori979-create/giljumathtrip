@@ -5,9 +5,10 @@ export type Event = { id: string; time: string; title: string; place: string; ga
 export type Meeting = { place: string; photoUrl: string; time: string; note: string };
 export type Trip = { className: string; teacherName: string; title: string; startDate: string; activeDay: number; meeting: Meeting; days: Event[][] };
 export type StudentIdentity = {uid:string;name:string};
+export type StudentMember = StudentIdentity & {joined:number};
 export type Alert = Meeting & { id: string; created: number; read?: boolean; readCount?: number; confirmedStudents?:StudentIdentity[]; unconfirmedStudents?:StudentIdentity[] };
 export type MissionSubmission = { id: string; missionId: string; photoUrl: string; submitted: number; studentName?:string };
-export type State = { role: 'student'|'teacher'; code: string; trip: Trip; alerts: Alert[]; completedMissions: string[]; missionSubmissions: MissionSubmission[]; studentCount: number; missionSubmissionsReady?:boolean; studentName?:string };
+export type State = { role: 'student'|'teacher'; code: string; trip: Trip; alerts: Alert[]; completedMissions: string[]; missionSubmissions: MissionSubmission[]; studentCount: number; students?:StudentMember[]; missionSubmissionsReady?:boolean; studentName?:string };
 export const defaultTrip: Trip = {
  className:'6학년 2반',teacherName:'담임 선생님',title:'길주초 6학년 수학여행',startDate:'',activeDay:1,
  meeting:{place:'',photoUrl:'',time:'',note:''},

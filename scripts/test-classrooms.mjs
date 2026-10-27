@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {initializeTestEnvironment} from '@firebase/rules-unit-testing';
 import {initializeApp,deleteApp} from 'firebase/app';
 import {getAuth,connectAuthEmulator,signInWithEmailAndPassword,signInAnonymously} from 'firebase/auth';
-import {getFirestore,connectFirestoreEmulator,doc,collection,getDoc,getDocs,setDoc,updateDoc,deleteDoc,serverTimestamp,terminate} from 'firebase/firestore';
+import {getFirestore,connectFirestoreEmulator,doc,collection,getDoc,getDocs,setDoc,updateDoc,deleteDoc,serverTimestamp,terminate,writeBatch} from 'firebase/firestore';
 import {CLASSROOMS,teacherCredential,studentName} from '../lib/classrooms.ts';
 import {localPins,setupLocalClassrooms} from './setup-local-classrooms.mjs';
 
@@ -73,9 +73,16 @@ try {
   assert.equal((await getDoc(path(s1,room1,'alerts',alertId))).exists(),false,'Only the owning teacher may delete an alert; students see it removed');
   await setDoc(path(s1,room1,'progress',uid1),{completedMissions:['food-photo'],updatedAt:serverTimestamp()});
   await denied(getDoc(path(t2,room1,'progress',uid1)));
-  await deleteDoc(path(s1,room1,'members',uid1));await denied(getDoc(path(s1,room1)));
+  await setDoc(path(s1,room1,'pushSubscriptions',uid1),{endpoint:'https://fcm.googleapis.com/fcm/send/local-test',p256dh:'A'.repeat(87),auth:'B'.repeat(22),updatedAt:serverTimestamp()});
+  const sameClassPeer=client('peer-kick'),peerUid=(await signInAnonymously(sameClassPeer.auth)).user.uid;
+  await setDoc(path(sameClassPeer.db,room1,'members',peerUid),{name:'다른 학생',joinedAt:serverTimestamp()});
+  await denied(deleteDoc(path(sameClassPeer.db,room1,'members',uid1)));await denied(deleteDoc(path(t2,room1,'members',uid1)));
+  const removal=writeBatch(t1);removal.delete(path(t1,room1,'members',uid1));removal.delete(path(t1,room1,'pushSubscriptions',uid1));await removal.commit();
+  assert.equal((await getDoc(path(t1,room1,'members',uid1))).exists(),false);assert.equal((await getDoc(path(t1,room1,'pushSubscriptions',uid1))).exists(),false);
+  await denied(getDoc(path(s1,room1)));await denied(setDoc(path(s1,room1,'progress',uid1),{completedMissions:['food-photo'],updatedAt:serverTimestamp()}));
+
   assert.equal((await getDoc(path(t1,room1,'submissions',uid1+'_food-photo'))).data().studentName,'김여행','Teacher retains submitter name after student leaves');
-  console.log('PASS: all 5 real emulator teacher logins, wrong-class PIN rejection, required names, identical names isolated, teacher/student cross-class read/write denied, separate schedules/photos/missions/alerts/progress, submitter attribution, logout revocation, owning-teacher-only alert deletion, member-only event detail reads and teacher-only writes.');
+  console.log('PASS: all 5 real emulator teacher logins, wrong-class PIN rejection, required names, identical names isolated, teacher/student cross-class read/write denied, separate schedules/photos/missions/alerts/progress, submitter attribution, logout revocation, owning-teacher-only alert deletion, member-only event detail reads and teacher-only writes, owning-teacher-only removal and push cleanup.');
 }finally{
   await Promise.all(clients.map(async c=>{await terminate(c.db);await deleteApp(c.app);}));
   await env.clearFirestore();await env.cleanup();

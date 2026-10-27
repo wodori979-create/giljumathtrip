@@ -8,6 +8,7 @@ import {sendPush,disablePush} from './push';
 import {classroomByCode,classroomById,studentName,teacherCredential} from './classrooms';
 
 const KEY='gilju-trip-classroom-v2';
+let leaving=false;
 const ready=new Promise<void>(resolve=>{const unsubscribe=onAuthStateChanged(auth,()=>{unsubscribe();resolve();});});
 const photos=new Map<string,Promise<string>>(),photoRefs=new Map<string,string>();
 const milliseconds=(v:any)=>v?.toMillis?.()||0;
@@ -50,6 +51,7 @@ async function assemble(code:string,uid:string,parts:Parts):Promise<State> {
   }))]);
   trip.meeting.photoUrl=meetingPhotoUrl;
   return {role:teacher?'teacher':'student',code,trip,alerts,studentName:teacher?'':parts.profile?.data()?.name||'',
+    ...(teacher?{students:parts.members!.docs.filter(m=>m.id!==raw.ownerUid).map(m=>({uid:m.id,name:m.data().name||'이름 없음',joined:milliseconds(m.data().joinedAt)})).sort((a,b)=>a.name.localeCompare(b.name,'ko')||a.joined-b.joined||a.uid.localeCompare(b.uid))}:{}),
     completedMissions:(parts.progress?.data()?.completedMissions||[]).filter((id:string)=>valid.has(id)),
     missionSubmissionsReady:teacher||!!parts.submissions,
     missionSubmissions:(parts.submissions?.docs||[]).map(doc=>({id:doc.id,...doc.data()} as DocumentData)).filter(s=>valid.has(s.missionId)).sort((a,b)=>milliseconds(b.submittedAt)-milliseconds(a.submittedAt)).map(s=>({id:s.id,missionId:s.missionId,photoUrl:s.photoData,submitted:milliseconds(s.submittedAt),studentName:s.studentName||parts.members?.docs.find(m=>m.id===s.studentUid)?.data().name||''})),
@@ -67,17 +69,18 @@ async function readState(initialBase?:DocumentSnapshot):Promise<State> {
   return assemble(code,user.uid,{base,alerts,progress,submissions,receipts,members,profile});
 }
 // Firestore listeners receive only changes; no five-second polling of photos or state.
-export function watchState(onState:(state:State)=>void,onError:(error:Error)=>void) {
+export function watchState(onState:(state:State)=>void,onError:(error:Error)=>void,onRemoved?:()=>void) {
   const {code,user}=context(),parts:Partial<Parts>={members:null,profile:null};let active=true,generation=0,started=false,isTeacher=false;
   const stops:Array<()=>void>=[];
-  const emit=()=>{if(!active||!parts.base||!parts.alerts||(!isTeacher&&!parts.progress)||(!isTeacher&&!parts.submissions)||!parts.receipts||(!isTeacher&&!parts.profile)||(isTeacher&&!parts.members))return;const own=++generation;assemble(code,user.uid,parts as Parts).then(state=>{if(active&&own===generation)onState(state)}).catch(e=>active&&onError(friendly(e)));};
-  const listenQuery=(key:'alerts'|'submissions'|'receipts'|'members',q:Query)=>stops.push(onSnapshot(q,snapshot=>{parts[key]=snapshot;emit();},error=>active&&onError(friendly(error))));
+  const removed=()=>{if(!active)return;active=false;stops.forEach(stop=>stop());if(leaving||storedCode()!==code||auth.currentUser?.uid!==user.uid)return;localStorage.removeItem(KEY);photos.clear();photoRefs.clear();void signOut(auth).catch(()=>{});onRemoved?.();};
+  const emit=()=>{if(!active||!parts.base||!parts.alerts||(!isTeacher&&!parts.progress)||(!isTeacher&&!parts.submissions)||!parts.receipts||(!isTeacher&&!parts.profile)||(isTeacher&&!parts.members))return;const own=++generation;assemble(code,user.uid,parts as Parts).then(state=>{if(active&&!leaving&&own===generation)onState(state)}).catch(e=>active&&!leaving&&onError(friendly(e)));};
+  const listenQuery=(key:'alerts'|'submissions'|'receipts'|'members',q:Query)=>stops.push(onSnapshot(q,snapshot=>{parts[key]=snapshot;emit();},error=>active&&!leaving&&onError(friendly(error))));
   stops.push(onSnapshot(classRef(code),snapshot=>{
     if(!snapshot.exists()){onError(new Error('반을 찾을 수 없어요.'));return;}parts.base=snapshot;
-    if(!started){started=true;const teacher=snapshot.data().ownerUid===user.uid,q=queries(code,user.uid,teacher);isTeacher=teacher;listenQuery('alerts',q.alerts);if(!teacher)listenQuery('submissions',q.submissions!);listenQuery('receipts',q.receipts);if(teacher)listenQuery('members',bucket(code,'members'));else stops.push(onSnapshot(item(code,'members',user.uid),p=>{parts.profile=p;emit();},e=>active&&onError(friendly(e))));
-      if(!teacher)stops.push(onSnapshot(item(code,'progress',user.uid),p=>{parts.progress=p;emit();},e=>active&&onError(friendly(e))));}
+    if(!started){started=true;const teacher=snapshot.data().ownerUid===user.uid,q=queries(code,user.uid,teacher);isTeacher=teacher;listenQuery('alerts',q.alerts);if(!teacher)listenQuery('submissions',q.submissions!);listenQuery('receipts',q.receipts);if(teacher)listenQuery('members',bucket(code,'members'));else stops.push(onSnapshot(item(code,'members',user.uid),p=>{if(!p.exists()){if(!p.metadata.fromCache)removed();return;}parts.profile=p;emit();},e=>active&&!leaving&&onError(friendly(e))));
+      if(!teacher)stops.push(onSnapshot(item(code,'progress',user.uid),p=>{parts.progress=p;emit();},e=>active&&!leaving&&onError(friendly(e))));}
     emit();
-  },error=>active&&onError(friendly(error))));
+  },error=>active&&!leaving&&onError(friendly(error))));
   return ()=>{active=false;stops.forEach(stop=>stop());};
 }
 
@@ -102,13 +105,13 @@ export async function api(path:string,body?:any):Promise<any> {
       const room=classroomById(body.roomId),code=room.code;
       check(body.role==='teacher'||body.role==='student','학생 또는 선생님을 선택해 주세요.');
       const name=body.role==='student'?studentName(body.name):'',password=body.role==='teacher'?await teacherCredential(code,body.password):'';
-      const previous=storedCode();
+      leaving=true;const previous=storedCode();
       if(auth.currentUser?.isAnonymous&&classroomByCode(previous)){await disablePush(previous);await deleteDoc(item(previous,'members',auth.currentUser.uid));}
       if(auth.currentUser)await signOut(auth);localStorage.removeItem(KEY);photos.clear();photoRefs.clear();
       let joinedBase:DocumentSnapshot|undefined;
       if(body.role==='teacher') {await signInWithEmailAndPassword(auth,teacherEmail(code),password);const c=await getDoc(classRef(code));joinedBase=c;check(c.data()?.ownerUid===auth.currentUser!.uid,'교사용 입장 정보를 확인해 주세요.');}
       else {const credential=await signInAnonymously(auth);try{await setDoc(item(code,'members',credential.user.uid),{name,joinedAt:serverTimestamp()});}catch(error){await signOut(auth);throw error;}}
-      localStorage.setItem(KEY,code);return await readState(joinedBase);
+      localStorage.setItem(KEY,code);leaving=false;return await readState(joinedBase);
     }
     if(path==='session') {
       if(!auth.currentUser||!classroomByCode(storedCode()))return {session:null};
@@ -116,7 +119,7 @@ export async function api(path:string,body?:any):Promise<any> {
         // Emulator accounts may be recreated after a local restart while the browser
         // still has the previous session. Refresh before any Firestore listeners.
         if(emulator)await auth.currentUser.getIdToken(true);
-        return await readState();
+        leaving=false;return await readState();
       }catch(error:any){
         const expired=['auth/invalid-refresh-token','auth/invalid-user-token','auth/user-token-expired','auth/user-disabled','auth/user-not-found'].includes(error.code);
         if(expired||error.code==='permission-denied'||error.code==='unauthenticated'||error.message==='반을 찾을 수 없어요.'||error.message==='이름을 입력하고 우리 반에 다시 입장해 주세요.'){
@@ -127,7 +130,12 @@ export async function api(path:string,body?:any):Promise<any> {
     }
     if(path==='state')return readState();
     const {code,user,ref}=context();
-    if(path==='logout') {if(user.isAnonymous){await disablePush(code);await deleteDoc(item(code,'members',user.uid));}localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}
+    if(path==='logout') {leaving=true;try{if(user.isAnonymous){await disablePush(code);await deleteDoc(item(code,'members',user.uid));}localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}catch(error){leaving=false;throw error;}}
+    if(path==='members/remove') {
+      check(!user.isAnonymous,'선생님만 학생을 내보낼 수 있어요.');
+      check(typeof body?.uid==='string'&&body.uid.length>0&&body.uid.length<=128&&!body.uid.includes('/')&&body.uid!==user.uid,'학생을 확인해 주세요.');
+      const batch=writeBatch(db);batch.delete(item(code,'members',body.uid));batch.delete(item(code,'pushSubscriptions',body.uid));await batch.commit();return {ok:true};
+    }
     if(path==='mission/submissions') {
       check(!user.isAnonymous,'선생님만 제출 사진을 볼 수 있어요.');
       check(typeof body?.missionId==='string'&&MISSION_ID.test(body.missionId),'미션을 확인해 주세요.');

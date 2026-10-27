@@ -49,7 +49,7 @@ service cloud.firestore {
           && request.auth.token.firebase.sign_in_provider == 'anonymous'
           && request.resource.data.keys().hasOnly(['name','joinedAt']) && request.resource.data.joinedAt == request.time
           && (fixedRoom(code) ? name(request.resource.data.name) : (!('name' in request.resource.data) || name(request.resource.data.name)));
-        allow delete: if signed() && uid == request.auth.uid;
+        allow delete: if signed() && (uid == request.auth.uid || (owner(code) && uid != base(code).ownerUid));
       }
       match /photos/{id} {
         allow get: if member(code);
