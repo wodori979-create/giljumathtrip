@@ -50,7 +50,15 @@ export async function enablePush(code:string,preview=false):Promise<PushStatus> 
 }
 export async function disablePush(code:string) {
   const user=auth.currentUser;if(user)await deleteDoc(subscriptionRef(code,user.uid));
-  if('serviceWorker'in navigator) {const worker=await navigator.serviceWorker.getRegistration('/');const sub=await worker?.pushManager.getSubscription();await sub?.unsubscribe();}
+  // Safari tabs can have a service worker without Web Push support.
+  // The server subscription is already deleted; optional device cleanup must not block logout.
+  try {
+    if('serviceWorker'in navigator) {
+      const worker=await navigator.serviceWorker.getRegistration('/');
+      const sub=await worker?.pushManager?.getSubscription?.();
+      await sub?.unsubscribe();
+    }
+  }catch{/* Browser-side cleanup is best effort after removing server delivery. */}
 }
 export async function sendPush(code:string,alertId:string):Promise<PushResult> {
   const totals:PushResult={sent:0,failed:0,expired:0,skipped:0};
