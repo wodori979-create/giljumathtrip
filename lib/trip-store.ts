@@ -8,7 +8,7 @@ import {sendPush,disablePush} from './push';
 import {signInStudent} from './student-auth';
 import {classroomByCode,classroomById,studentName,teacherCredential,isStudentAccount,studentCredential} from './classrooms';
 
-const KEY='gilju-trip-classroom-v2';
+import {CLASSROOM_SESSION_KEY as KEY} from './session-key';
 let leaving=false;
 const ready=new Promise<void>(resolve=>{const unsubscribe=onAuthStateChanged(auth,()=>{unsubscribe();resolve();});});
 const photos=new Map<string,Promise<string>>(),photoRefs=new Map<string,string>();

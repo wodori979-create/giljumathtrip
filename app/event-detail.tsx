@@ -1,6 +1,6 @@
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {Camera,Hotel,LoaderCircle,Save,X} from 'lucide-react';
-import {api,uploadMeetingPhoto} from '@/lib/trip-store';
+import {api,uploadMeetingPhoto} from '@/lib/trip-api';
 import {displayTime} from '@/lib/time';
 import type {Event} from '@/lib/trip';
 import EventPhotoGallery from './event-photo-gallery';

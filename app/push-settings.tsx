@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
 import {BellRing,CheckCircle2,LoaderCircle,X} from 'lucide-react';
-import {pushStatus,enablePush,disablePush,type PushStatus} from '@/lib/push';
+import {pushStatus,enablePush,disablePush,type PushStatus} from '@/lib/push-api';
 
 export default function PushSettings({code,demo}:{code:string;demo:boolean}) {
   const [status,setStatus]=useState<PushStatus|'checking'>('checking'),[busy,setBusy]=useState(false),[error,setError]=useState('');

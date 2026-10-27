@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {LoaderCircle,RefreshCw} from 'lucide-react';
-import {api} from '@/lib/trip-store';
+import {api} from '@/lib/trip-api';
 import type {MissionSubmission} from '@/lib/trip';
 
 type Page={items:MissionSubmission[];cursor:string|null;hasMore:boolean;index:number};
