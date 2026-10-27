@@ -2,6 +2,7 @@
 export const everlandMealPhotos=[
  {src:'/everland-meal-menu.jpg',alt:'식사권 이용 식당·메뉴'},
  {src:'/everland-restaurant-hours.jpg',alt:'식당 운영시간'},
+ {src:'/everland-guide-map.pdf',alt:'에버랜드 가이드맵 PDF',pages:['/everland-guide-map-1.webp','/everland-guide-map-2.webp']},
 ];
 export function mealPhotosForEvent(eventId:string){
  return ['day1-everland-dinner','day2-everland-lunch'].includes(eventId)?everlandMealPhotos:[];
