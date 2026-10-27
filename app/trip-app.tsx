@@ -74,7 +74,7 @@ export default function TripApp(){
  },[]);
  useEffect(()=>{
   if(!state||demo)return;let active=true;
-  const stop=watchState(next=>{if(active){setState(next);setConnected(navigator.onLine)}},e=>{if(active){setConnected(false);setError(e.message)}},handleRemoval);
+  const stop=watchState(next=>{if(active){setState(next);setNotice(current=>{if(!current)return null;const updated=next.alerts.find(alert=>alert.id===current.id);return updated&&!updated.read?updated:null;});setConnected(navigator.onLine)}},e=>{if(active){setConnected(false);setError(e.message)}},handleRemoval);
   const online=()=>setConnected(navigator.onLine);window.addEventListener('online',online);window.addEventListener('offline',online);
   return()=>{active=false;stop();window.removeEventListener('online',online);window.removeEventListener('offline',online)};
  },[state?.code,state?.role,demo]);
