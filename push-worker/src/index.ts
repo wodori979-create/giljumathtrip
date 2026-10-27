@@ -1,3 +1,4 @@
+import {displayTime} from '../../lib/time.ts';
 import {createRemoteJWKSet, jwtVerify} from 'jose';
 import {buildPushPayload} from '@block65/webcrypto-web-push';
 
@@ -122,7 +123,7 @@ export function createHandler(overrides: Partial<Dependencies> = {}) {
           if (!member) {result.skipped++; return;}
           const endpoint = text(subscription, 'endpoint'), p256dh = text(subscription, 'p256dh'), auth = text(subscription, 'auth');
           if (!validEndpoint(endpoint) || !/^[A-Za-z0-9_-]{87}$/.test(p256dh) || !/^[A-Za-z0-9_-]{22}$/.test(auth)) {result.failed++; return;}
-          const payload = await deps.build({data: JSON.stringify({title: title(place), body: `${meetingTime}까지 · ${note}`, code, notice: alertId}), options: {ttl: 600, urgency: 'high'}},
+          const payload = await deps.build({data: JSON.stringify({title: title(place), body: `${displayTime(meetingTime)}까지 · ${note}`, code, notice: alertId}), options: {ttl: 600, urgency: 'high'}},
             {endpoint, expirationTime: null, keys: {p256dh, auth}}, {subject: env.VAPID_SUBJECT, publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY});
           const dispatchPath = `${path}/pushDispatches/${alertId}_${uid}`;
           const previous = await get('/' + dispatchPath, true);

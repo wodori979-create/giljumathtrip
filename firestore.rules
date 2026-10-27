@@ -27,7 +27,7 @@ service cloud.firestore {
         && (!fixedRoom(code) || d.className == roomName(code))
         && short(d.title,100) && short(d.startDate,10) && d.activeDay in [1,2,3]
         && short(d.daysJson,500000) && d.missionIds is list && d.missionIds.size() <= 480
-        && meeting(d.meeting,code);
+        && (meeting(d.meeting,code) || (d.meeting is map && d.meeting.keys().hasOnly(['place','time','note','photoId']) && d.meeting.place == '' && d.meeting.time == '' && d.meeting.note == '' && d.meeting.photoId == ''));
     }
     match /sparkTrips/{code} {
       allow get: if member(code);

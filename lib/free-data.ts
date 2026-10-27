@@ -1,4 +1,4 @@
-import {defaultTrip, normalizeTrip, type Trip} from './trip';
+import {defaultTrip, normalizeTrip, type Trip} from './trip.ts';
 
 export const MAX_PHOTO_BYTES=180000;
 export const MAX_PHOTO_DATA=240023;
@@ -9,11 +9,11 @@ export function check(ok:unknown,message:string):asserts ok {if(!ok)throw new Er
 const text=(v:unknown,max:number)=>{check(typeof v==='string'&&v.length<=max,'입력 내용을 확인해 주세요.');return v.trim();};
 export function validateTrip(raw:Trip):Trip {
   const trip=normalizeTrip(raw);
-  check(Array.isArray(trip.days)&&trip.days.length===3,'3일차 일정을 확인해 주세요.');
+  check(Array.isArray(trip.days)&&trip.days.length>=1&&trip.days.length<=3,'여행 일차를 확인해 주세요.');
   trip.className=text(trip.className,40);check(trip.className,'반 이름을 입력해 주세요.');
   trip.teacherName=text(trip.teacherName,40);trip.title=text(trip.title,100);
   trip.startDate=text(trip.startDate,10);check(!trip.startDate||/^\d{4}-\d{2}-\d{2}$/.test(trip.startDate),'날짜를 확인해 주세요.');
-  check([1,2,3].includes(trip.activeDay),'여행 일차를 확인해 주세요.');
+  check(Number.isInteger(trip.activeDay)&&trip.activeDay>=1&&trip.activeDay<=trip.days.length,'여행 일차를 확인해 주세요.');
   const ids=new Set<string>();
   trip.days=trip.days.map(day=>{
     check(day.length<=20,'하루 일정은 20개까지 입력할 수 있어요.');
@@ -30,15 +30,16 @@ export function validateTrip(raw:Trip):Trip {
   return trip;
 }
 export const missionIds=(trip:Trip)=>trip.days.flatMap(day=>day.flatMap(event=>event.missions.map(m=>m.id)));
-export function meetingData(input:any,photoId='') {
+export function meetingData(input:any,photoId='',allowEmpty=false) {
   const place=text(input.place,100),time=text(input.time,5),note=text(input.note,200);
+  if(allowEmpty&&!place&&!time&&!note&&!photoId)return {place,time,note,photoId};
   check(place,'집합 장소를 입력해 주세요.');check(/^([01]\d|2[0-3]):[0-5]\d$/.test(time),'모이는 시간을 확인해 주세요.');
   return {place,time,note,photoId};
 }
 export function encodeTrip(input:Trip,photoId='') {
   const trip=validateTrip(input),{days,meeting,...fields}=trip;
   const daysJson=JSON.stringify(days);check(new TextEncoder().encode(daysJson).length<=500000,'일정 내용이 너무 길어요.');
-  return {...fields,daysJson,missionIds:missionIds(trip),meeting:meetingData(meeting,photoId)};
+  return {...fields,daysJson,missionIds:missionIds(trip),meeting:meetingData(meeting,photoId,true)};
 }
 export function decodeTrip(data:any):Trip {
   return normalizeTrip({className:data.className,teacherName:data.teacherName,title:data.title,startDate:data.startDate,activeDay:data.activeDay,days:JSON.parse(data.daysJson),meeting:{...data.meeting,photoUrl:''}});

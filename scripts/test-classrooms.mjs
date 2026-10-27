@@ -56,11 +56,11 @@ try {
   assert.equal((await getDoc(path(s1,room1,'eventDetails',detailId))).data().description,'자세한 관람 안내');
   await denied(getDoc(path(s2,room1,'eventDetails',detailId)));
   await denied(updateDoc(path(s1,room1,'eventDetails',detailId),{description:'학생 수정',updatedAt:serverTimestamp()}));
-  const submission={studentUid:uid1,studentName:'김여행',missionId:'museum-memory',photoData,submittedAt:serverTimestamp()};
-  await denied(setDoc(path(s1,room1,'submissions',uid1+'_museum-memory'),{...submission,studentName:'다른 학생'}));
-  await setDoc(path(s1,room1,'submissions',uid1+'_museum-memory'),submission);
-  assert.equal((await getDoc(path(t1,room1,'submissions',uid1+'_museum-memory'))).data().studentName,'김여행');
-  await denied(getDoc(path(t2,room1,'submissions',uid1+'_museum-memory')));
+  const submission={studentUid:uid1,studentName:'김여행',missionId:'food-photo',photoData,submittedAt:serverTimestamp()};
+  await denied(setDoc(path(s1,room1,'submissions',uid1+'_food-photo'),{...submission,studentName:'다른 학생'}));
+  await setDoc(path(s1,room1,'submissions',uid1+'_food-photo'),submission);
+  assert.equal((await getDoc(path(t1,room1,'submissions',uid1+'_food-photo'))).data().studentName,'김여행');
+  await denied(getDoc(path(t2,room1,'submissions',uid1+'_food-photo')));
   assert.equal((await getDocs(collection(t2,'sparkTrips',room2.code,'submissions'))).size,0);
   const alertId=crypto.randomUUID();
   await setDoc(path(t1,room1,'alerts',alertId),{place:'1반 전용 소집 장소',time:'10:20',note:'1반만 모여요',photoId,createdAt:serverTimestamp()});
@@ -71,10 +71,10 @@ try {
   await denied(deleteDoc(path(t2,room1,'alerts',alertId)));
   await deleteDoc(path(t1,room1,'alerts',alertId));
   assert.equal((await getDoc(path(s1,room1,'alerts',alertId))).exists(),false,'Only the owning teacher may delete an alert; students see it removed');
-  await setDoc(path(s1,room1,'progress',uid1),{completedMissions:['museum-memory'],updatedAt:serverTimestamp()});
+  await setDoc(path(s1,room1,'progress',uid1),{completedMissions:['food-photo'],updatedAt:serverTimestamp()});
   await denied(getDoc(path(t2,room1,'progress',uid1)));
   await deleteDoc(path(s1,room1,'members',uid1));await denied(getDoc(path(s1,room1)));
-  assert.equal((await getDoc(path(t1,room1,'submissions',uid1+'_museum-memory'))).data().studentName,'김여행','Teacher retains submitter name after student leaves');
+  assert.equal((await getDoc(path(t1,room1,'submissions',uid1+'_food-photo'))).data().studentName,'김여행','Teacher retains submitter name after student leaves');
   console.log('PASS: all 5 real emulator teacher logins, wrong-class PIN rejection, required names, identical names isolated, teacher/student cross-class read/write denied, separate schedules/photos/missions/alerts/progress, submitter attribution, logout revocation, owning-teacher-only alert deletion, member-only event detail reads and teacher-only writes.');
 }finally{
   await Promise.all(clients.map(async c=>{await terminate(c.db);await deleteApp(c.app);}));
