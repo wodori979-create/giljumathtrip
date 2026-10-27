@@ -27,3 +27,12 @@
 
 /* Give schedule notes the full timeline width instead of the title's inset. */
 .schedule-v3 .lined-timeline{--event-detail-inset:23px}.schedule-v3 .lined-timeline .event-details{margin-left:calc(-1 * var(--event-detail-inset));width:calc(100% + var(--event-detail-inset));padding-top:5px}.schedule-v3 .event-gather{padding:12px 14px;color:#204b3c}.schedule-v3 .event-gather .gather-copy{width:100%;min-width:0}.schedule-v3 .event-gather b{display:flex;align-items:center;gap:6px;font-size:14px;color:#55725e;margin-bottom:5px;line-height:1.5}.schedule-v3 .schedule-mission-summary{padding:12px 14px;color:#46543b}.schedule-v3 .schedule-mission-summary>span{font-size:14px;line-height:1.5;color:#80652c}.schedule-v3 .schedule-mission-summary>.text-btn{font-size:15px;min-height:36px;margin-top:6px}.summary-mission-lines{display:grid;gap:5px;margin-top:7px;min-width:0}.fit-line{display:block;width:100%;max-width:100%;min-width:0;font-size:22px;line-height:1.4;white-space:nowrap;overflow:hidden}.fit-line-text{display:inline-block;max-width:none;white-space:nowrap;overflow-wrap:normal;word-break:normal;vertical-align:top}@media(max-width:760px){.schedule-v3 .lined-timeline{--event-detail-inset:16px}.schedule-v3 .event-gather,.schedule-v3 .schedule-mission-summary{padding:11px 12px}.schedule-v3 .event-gather b,.schedule-v3 .schedule-mission-summary>span{font-size:14px}.schedule-v3 .schedule-mission-summary>.text-btn{font-size:14px}}
+
+/* Keep time and title on one spacious row; details stay on their own row. */
+.schedule-v3 .lined-timeline .event-line{column-gap:14px;align-items:start}
+.schedule-v3 .lined-timeline .event-line>time{font-size:20px;line-height:32px}
+.schedule-v3 .lined-timeline .event-name-row{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;line-height:32px;min-width:0}
+.schedule-v3 .lined-timeline .event-name-row>.fit-line{line-height:32px;padding-right:4px;box-sizing:border-box}
+.schedule-v3 .lined-timeline .event-more-button{justify-self:start}
+@media(max-width:760px){.schedule-v3 .lined-timeline .event-line{column-gap:12px}.schedule-v3 .lined-timeline .event-line>time{font-size:18px}}
+@media(max-width:760px){.schedule-v3 .lined-timeline .event-line{grid-template-columns:max-content minmax(0,1fr)}.schedule-v3 .lined-timeline .event-line>.event-icon{display:none}}
