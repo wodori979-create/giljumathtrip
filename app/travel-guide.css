@@ -36,3 +36,6 @@
 .schedule-v3 .lined-timeline .event-more-button{justify-self:start}
 @media(max-width:760px){.schedule-v3 .lined-timeline .event-line{column-gap:12px}.schedule-v3 .lined-timeline .event-line>time{font-size:18px}}
 @media(max-width:760px){.schedule-v3 .lined-timeline .event-line{grid-template-columns:max-content minmax(0,1fr)}.schedule-v3 .lined-timeline .event-line>.event-icon{display:none}}
+
+.site-credit{text-align:center;padding:18px 12px 22px;font-size:11px;line-height:1.5;color:#7a877f;font-weight:400}
+@media(max-width:760px){.app-shell+.site-credit{padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}}
