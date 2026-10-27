@@ -51,5 +51,9 @@ firebase-debug.log
 /functions/node_modules/
 /functions/lib/
 /functions/.env*
+/push-worker/node_modules/
+/push-worker/.wrangler/
+/push-worker/.dev.vars*
+/push-worker/.env*
 service-account*.json
 *-firebase-adminsdk-*.json

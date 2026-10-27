@@ -3,6 +3,7 @@ import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,query,where,ord
 import {auth,db} from './firebase-client';
 import {type State,type Trip,type Meeting,type Alert} from './trip';
 import {CLASS_CODE,MAX_PHOTO_BYTES,MAX_PHOTO_DATA,check,teacherEmail,initialTrip,encodeTrip,decodeTrip,meetingData} from './free-data';
+import {sendPush,disablePush} from './push';
 
 const KEY='gilju-trip-spark-class';
 const ready=new Promise<void>(resolve=>{const unsubscribe=onAuthStateChanged(auth,()=>{unsubscribe();resolve();});});
@@ -110,12 +111,13 @@ export async function api(path:string,body?:any):Promise<any> {
     }
     if(path==='state')return readState();
     const {code,user,ref}=context();
-    if(path==='logout') {if(user.isAnonymous)await deleteDoc(item(code,'members',user.uid));localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}
+    if(path==='logout') {if(user.isAnonymous){await disablePush(code);await deleteDoc(item(code,'members',user.uid));}localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}
     if(path==='settings') {const trip=body.trip as Trip;await updateDoc(ref,{...encodeTrip(trip,photoId(code,trip.meeting.photoUrl)),updatedAt:serverTimestamp()});return {ok:true};}
     if(path==='broadcast') {
       const meeting=meetingData(body,photoId(code,body.photoUrl||'')),id=crypto.randomUUID(),batch=writeBatch(db);
-      batch.set(item(code,'alerts',id),{...meeting,createdAt:serverTimestamp()});batch.update(ref,{meeting,updatedAt:serverTimestamp()});await batch.commit();return {ok:true};
+      batch.set(item(code,'alerts',id),{...meeting,createdAt:serverTimestamp()});batch.update(ref,{meeting,updatedAt:serverTimestamp()});await batch.commit();return {ok:true,alertId:id,push:await sendPush(code,id)};
     }
+    if(path==='push/retry')return {ok:true,alertId:body.id,push:await sendPush(code,body.id)};
     if(path==='ack') {const receipt=item(code,'receipts',body.id+'_'+user.uid);await runTransaction(db,async tx=>{if(!(await tx.get(receipt)).exists())tx.set(receipt,{alertId:body.id,studentUid:user.uid,createdAt:serverTimestamp()});});return {ok:true};}
     if(path==='mission'||path==='mission-photo/remove') {
       const missionId=String(body.id||body.missionId||''),progress=item(code,'progress',user.uid);

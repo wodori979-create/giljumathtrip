@@ -38,7 +38,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt;
 
       match /members/{uid} {
-        allow get: if signed() && uid == request.auth.uid;
+        allow get: if signed() && (uid == request.auth.uid || owner(code));
         allow list: if owner(code);
         allow create, update: if signed() && uid == request.auth.uid
           && exists(/databases/$(database)/documents/sparkTrips/$(code))
@@ -83,6 +83,28 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time
           && meeting({'place':request.resource.data.place,'time':request.resource.data.time,'note':request.resource.data.note,'photoId':request.resource.data.photoId},code);
         allow update, delete: if false;
+      }
+      match /pushSubscriptions/{uid} {
+        allow get: if member(code) && (uid == request.auth.uid || owner(code));
+        allow list: if owner(code);
+        allow create, update: if student(code) && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['endpoint','p256dh','auth','updatedAt'])
+          && short(request.resource.data.endpoint,2048) && request.resource.data.endpoint.matches('^https://[^ @]+$')
+          && request.resource.data.p256dh is string && request.resource.data.p256dh.matches('^[A-Za-z0-9_-]{87}$')
+          && request.resource.data.auth is string && request.resource.data.auth.matches('^[A-Za-z0-9_-]{22}$')
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if signed() && (uid == request.auth.uid || owner(code));
+      }
+      match /pushDispatches/{id} {
+        allow get: if owner(code);
+        allow list, delete: if false;
+        allow create, update: if owner(code)
+          && request.resource.data.keys().hasOnly(['alertId','studentUid','status','updatedAt'])
+          && uuid(request.resource.data.alertId) && short(request.resource.data.studentUid,128)
+          && id == request.resource.data.alertId + '_' + request.resource.data.studentUid
+          && request.resource.data.status in ['sending','accepted','failed','expired']
+          && request.resource.data.updatedAt == request.time
+          && exists(/databases/$(database)/documents/sparkTrips/$(code)/alerts/$(request.resource.data.alertId));
       }
       match /receipts/{id} {
         allow get: if member(code) && (owner(code) || id.matches('^[a-f0-9-]{36}_' + request.auth.uid + '$'));

@@ -1,6 +1,6 @@
 # 길주초 6학년, 여행중!
 
-6학년 수학여행용 교사·학생 웹 앱입니다. Firebase Spark **무료 요금제**에서 Firebase Hosting, Authentication, Firestore만 사용합니다. 결제 계정, Cloud Functions, Cloud Run, Cloud Storage는 필요하지 않습니다.
+6학년 수학여행용 교사·학생 웹 앱입니다. Firebase Spark **무료 요금제**의 Hosting, Authentication, Firestore와 Cloudflare Workers **Free**의 푸시 발송 서버를 사용합니다. 결제 계정, Cloud Functions, Cloud Run, Cloud Storage는 필요하지 않습니다.
 
 앱 주소: https://gilju-grade6-trip-2026.web.app
 
@@ -10,7 +10,8 @@
 - 일정: 1~3일차 시간·일정 이름·활동 장소·소집 장소. 교사는 일정별 미션을 추가합니다.
 - 미션: 일정의 미션이 자동 표시됩니다. 학생은 사진을 제출·교체·삭제하고 완료 표시를 할 수 있습니다. 제출 사진은 본인과 교사만 읽습니다.
 - 모여라!: 교사가 장소 이름을 직접 적고 사진·모이는 시간·안내 글을 보내면 학생 앱의 알림함에 실시간 표시됩니다. 확인 표시와 지난 안내도 보관됩니다.
-- 앱을 닫았을 때의 기기 푸시는 이 무료 버전에 포함되지 않습니다. 이동 중에는 앱을 열어두고 모여라! 탭을 확인합니다.
+- 학생이 ‘휴대폰 알림 켜기’를 누르고 허용하면 백그라운드 Web Push도 받습니다. 알림에는 소집 장소·시간·안내 글이 표시되고, 누르면 앱에서 장소 사진까지 확인합니다. 아이폰은 iOS 16.4 이상에서 Safari로 홈 화면에 추가하고, 추가된 앱에서 알림을 켜야 합니다.
+- 교사의 발송 결과는 푸시 서비스가 발송 요청을 수락한 기기 수입니다. 학생이 실제로 읽었는지는 ‘확인했어요’로 확인합니다. 인터넷, 알림 권한, 기기 절전·방해금지 설정에 따라 도착이 늦거나 소리가 나지 않을 수 있습니다.
 
 ## 구조와 데이터 보호
 
@@ -21,6 +22,10 @@ React + TypeScript + Vite 정적 앱입니다. Firebase Authentication의 교사
 사진은 브라우저에서 최대 960px·180KB JPEG로 축소하여 원본 위치 등 메타데이터를 제거한 뒤 Firestore에 저장합니다. 장소 사진은 해당 반에 공유되고 미션 사진은 본인/교사에게만 제공됩니다. 실시간 리스너를 사용하여 반복적인 전체 자료 조회를 줄였습니다. Firebase 무료 사용량 한도는 적용됩니다.
 
 Firebase 웹 설정의 `apiKey`는 브라우저 앱을 식별하는 공개 설정입니다. 자료 접근 권한은 Authentication과 Firestore 보안 규칙으로 보호합니다. 관리자 키, 로그인 토큰, 학생 사진, 로컬 에뮬레이터 데이터는 저장소에 넣지 않습니다.
+
+푸시 서버는 Firebase 교사 ID 토큰의 서명·발급자·프로젝트·만료를 확인하고 Firestore의 반 소유권을 다시 검사합니다. 내용과 수신 기기는 보호된 Firestore에서 읽으며 호출자가 임의로 지정할 수 없습니다. Firebase 관리자 서비스 계정은 사용하지 않습니다. 발송용 VAPID 개인키는 Cloudflare Secret에만 배포하며 앱에는 공개키만 넣습니다. 학생 구독 정보는 본인과 해당 반 교사만 읽습니다. 로그아웃하면 구독과 반 참여를 해제합니다.
+
+Cloudflare Workers Free의 일 100,000 요청·요청당 CPU 10ms 제한을 고려해 한 번에 5대씩 발송합니다. 교사는 발송 결과가 표시될 때까지 화면을 유지하세요. 실패 시 10분 안에 ‘푸시 다시 보내기’를 누르면 이미 발송한 기기는 제외합니다. 무료 한도를 넘으면 발송이 제한되며 유료 요금제로 자동 전환하지 않습니다.
 
 ## 로컬 개발
 
@@ -45,11 +50,16 @@ http://127.0.0.1:5173 에 접속합니다. 에뮬레이터 프로젝트는 `demo
 
 ```sh
 npm run test:local
+node --test scripts/test-push-sw.mjs
+npm --prefix push-worker ci
+npm --prefix push-worker run check
 npm run deploy
 ```
 
 검증 명령은 실행 중인 로컬 Firestore 에뮬레이터만 사용하며, 교사·학생 권한, 사진 격리·크기 제한·교체·삭제, 실시간 소집 안내와 확인 표시, 로그아웃 후 접근 차단을 검사합니다.
 
 배포 명령은 Firestore 규칙/인덱스와 정적 Hosting만 배포합니다. 요금제를 업그레이드하지 않습니다. 새 프로젝트에 설치할 때는 Firebase 웹 앱 설정을 `lib/firebase-config.json`에 넣고 Authentication의 이메일/비밀번호 및 익명 제공업체를 활성화하세요.
+
+푸시 서버 배포는 [push-worker/README.md](push-worker/README.md)를 따릅니다. `lib/push-config.json`에는 서버 URL과 공개키만 저장합니다. 개인키·Wrangler 로그인 설정은 GitHub에 올리지 마세요.
 
 학생의 진행 상황과 사진은 브라우저의 익명 로그인에 연결됩니다. 로그아웃하거나 브라우저 데이터를 지우면 학생의 이전 로그인으로 자동 복구되지 않습니다. 여행 중에는 같은 브라우저로 사용하세요.

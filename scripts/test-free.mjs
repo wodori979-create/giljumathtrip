@@ -59,6 +59,25 @@ try {
   await assertSucceeds(setDoc(path(s,'receipts',alertId+'_student-one'),{alertId,studentUid:'student-one',createdAt:serverTimestamp()}));
   await assertFails(setDoc(path(s,'receipts',alertId+'_student-two'),{alertId,studentUid:'student-two',createdAt:serverTimestamp()}));
   assert.equal((await getDocs(collection(owner,'sparkTrips',code,'receipts'))).size,1);
+  const subscription={endpoint:'https://fcm.googleapis.com/fcm/send/test-only',p256dh:'A'.repeat(87),auth:'B'.repeat(22),updatedAt:serverTimestamp()};
+  await assertSucceeds(setDoc(path(s,'pushSubscriptions','student-one'),subscription));
+  await assertSucceeds(getDoc(path(s,'pushSubscriptions','student-one')));
+  await assertFails(setDoc(path(s,'pushSubscriptions','student-two'),subscription));
+  await assertFails(setDoc(path(owner,'pushSubscriptions','teacher-one'),subscription));
+  await assertFails(setDoc(path(peer,'pushSubscriptions','student-two'),{...subscription,auth:'invalid'}));
+  await assertFails(getDoc(path(peer,'pushSubscriptions','student-one')));
+  await assertFails(getDocs(collection(s,'sparkTrips',code,'pushSubscriptions')));
+  await assertFails(getDocs(collection(otherOwner,'sparkTrips',code,'pushSubscriptions')));
+  assert.equal((await getDocs(collection(owner,'sparkTrips',code,'pushSubscriptions'))).size,1);
+  await assertSucceeds(getDoc(path(owner,'members','student-one')));
+  const dispatch={alertId,studentUid:'student-one',status:'sending',updatedAt:serverTimestamp()};
+  await assertSucceeds(setDoc(path(owner,'pushDispatches',alertId+'_student-one'),dispatch));
+  await assertSucceeds(updateDoc(path(owner,'pushDispatches',alertId+'_student-one'),{status:'accepted',updatedAt:serverTimestamp()}));
+  await assertFails(getDoc(path(s,'pushDispatches',alertId+'_student-one')));
+  await assertFails(setDoc(path(s,'pushDispatches',alertId+'_student-one'),dispatch));
+  await assertFails(setDoc(path(otherOwner,'pushDispatches',alertId+'_student-one'),dispatch));
+  await assertFails(setDoc(path(owner,'pushDispatches','forged-id'),dispatch));
+  await assertSucceeds(deleteDoc(path(s,'pushSubscriptions','student-one')));
   await assertSucceeds(deleteDoc(path(s,'members','student-one')));await assertFails(getDoc(path(s)));await assertFails(getDoc(path(s,'photos',photoId)));
   console.log('PASS: Spark 교사/익명 학생 인증 규칙, 반 코드 참여, 일정 보호, 사진 크기 제한, 미션 사진 본인·교사 접근 및 교체·삭제, 다른 학생·다른 반 차단, 소집 안내 실시간 수신·확인, 로그아웃 접근 차단.');
 } finally {await env.cleanup();}

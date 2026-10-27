@@ -1,0 +1,24 @@
+{
+  "name": "gilju-trip-push",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "npm run build && wrangler dev --config wrangler.jsonc --port 8787",
+    "check": "tsc --noEmit && npm test && npm run build",
+    "check:wrangler": "npm run check && wrangler deploy --config wrangler.jsonc --dry-run",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "deploy": "npm run check && node scripts/deploy-api.mjs"
+  },
+  "dependencies": {
+    "@block65/webcrypto-web-push": "^2.0.0",
+    "jose": "^6.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261026.1",
+    "wrangler": "^4.153.0",
+    "typescript": "5.9.3",
+    "rolldown": "^1.0.0-rc.9",
+    "@types/node": "22.19.19"
+  }
+}
