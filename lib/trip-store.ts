@@ -40,17 +40,19 @@ async function photoData(blob:Blob) {
   const data=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result as string);reader.onerror=()=>reject(new Error('사진을 읽지 못했어요.'));reader.readAsDataURL(blob);});
   validatePhoto(data);return data;
 }
-type Parts={base:DocumentSnapshot;alerts:QuerySnapshot;progress:DocumentSnapshot;submissions:QuerySnapshot;receipts:QuerySnapshot;members:QuerySnapshot|null;profile:DocumentSnapshot|null};
+type Parts={base:DocumentSnapshot;alerts:QuerySnapshot;progress:DocumentSnapshot|null;submissions:QuerySnapshot|null;receipts:QuerySnapshot;members:QuerySnapshot|null;profile:DocumentSnapshot|null};
 async function assemble(code:string,uid:string,parts:Parts):Promise<State> {
   const raw=parts.base.data();check(raw,'반을 찾을 수 없어요.');const teacher=raw.ownerUid===uid,trip=decodeTrip(raw),valid=new Set(raw.missionIds as string[]);
-  trip.meeting.photoUrl=await resolvePhoto(code,raw.meeting.photoId);
+  const meetingPhoto=resolvePhoto(code,raw.meeting.photoId);
   const receipts=parts.receipts.docs.map(doc=>doc.data());
-  const alerts=await Promise.all(parts.alerts.docs.map(async doc=>{
+  const [meetingPhotoUrl,alerts]=await Promise.all([meetingPhoto,Promise.all(parts.alerts.docs.map(async doc=>{
     const a=doc.data(),roster=teacher?confirmationRoster(parts.members!.docs.filter(m=>m.id!==raw.ownerUid).map(m=>({uid:m.id,name:m.data().name||'이름 없음'})),receipts.filter(r=>r.alertId===doc.id).map(r=>r.studentUid)):null;return {id:doc.id,place:a.place,time:a.time,note:a.note,photoUrl:await resolvePhoto(code,a.photoId),created:milliseconds(a.createdAt),read:receipts.some(r=>r.alertId===doc.id&&r.studentUid===uid),...(teacher?{readCount:roster!.confirmedStudents.length,...roster}:{})};
-  }));
+  }))]);
+  trip.meeting.photoUrl=meetingPhotoUrl;
   return {role:teacher?'teacher':'student',code,trip,alerts,studentName:teacher?'':parts.profile?.data()?.name||'',
-    completedMissions:(parts.progress.data()?.completedMissions||[]).filter((id:string)=>valid.has(id)),
-    missionSubmissions:parts.submissions.docs.map(doc=>({id:doc.id,...doc.data()} as DocumentData)).filter(s=>valid.has(s.missionId)).sort((a,b)=>milliseconds(b.submittedAt)-milliseconds(a.submittedAt)).map(s=>({id:s.id,missionId:s.missionId,photoUrl:s.photoData,submitted:milliseconds(s.submittedAt),studentName:s.studentName||parts.members?.docs.find(m=>m.id===s.studentUid)?.data().name||''})),
+    completedMissions:(parts.progress?.data()?.completedMissions||[]).filter((id:string)=>valid.has(id)),
+    missionSubmissionsReady:!!parts.submissions,
+    missionSubmissions:(parts.submissions?.docs||[]).map(doc=>({id:doc.id,...doc.data()} as DocumentData)).filter(s=>valid.has(s.missionId)).sort((a,b)=>milliseconds(b.submittedAt)-milliseconds(a.submittedAt)).map(s=>({id:s.id,missionId:s.missionId,photoUrl:s.photoData,submitted:milliseconds(s.submittedAt),studentName:s.studentName||parts.members?.docs.find(m=>m.id===s.studentUid)?.data().name||''})),
     studentCount:parts.members?.docs.filter(doc=>doc.id!==raw.ownerUid).length||0};
 }
 function queries(code:string,uid:string,teacher:boolean) {
@@ -58,22 +60,22 @@ function queries(code:string,uid:string,teacher:boolean) {
     submissions:teacher?bucket(code,'submissions'):query(bucket(code,'submissions'),where('studentUid','==',uid)),
     receipts:teacher?bucket(code,'receipts'):query(bucket(code,'receipts'),where('studentUid','==',uid))};
 }
-async function readState():Promise<State> {
-  await ready;const {code,user,ref}=context(),base=await getDoc(ref);check(base.exists(),'반을 찾을 수 없어요.');const teacher=base.data().ownerUid===user.uid,q=queries(code,user.uid,teacher);
-  const [alerts,progress,submissions,receipts,members,profile]=await Promise.all([getDocs(q.alerts),getDoc(item(code,'progress',user.uid)),getDocs(q.submissions),getDocs(q.receipts),teacher?getDocs(bucket(code,'members')):Promise.resolve(null),teacher?Promise.resolve(null):getDoc(item(code,'members',user.uid))]);
+async function readState(includeSubmissions=false,initialBase?:DocumentSnapshot):Promise<State> {
+  await ready;const {code,user,ref}=context(),base=initialBase||await getDoc(ref);check(base.exists(),'반을 찾을 수 없어요.');const teacher=base.data().ownerUid===user.uid,q=queries(code,user.uid,teacher);
+  const [alerts,progress,submissions,receipts,members,profile]=await Promise.all([getDocs(q.alerts),teacher?Promise.resolve(null):getDoc(item(code,'progress',user.uid)),!teacher||includeSubmissions?getDocs(q.submissions):Promise.resolve(null),getDocs(q.receipts),teacher?getDocs(bucket(code,'members')):Promise.resolve(null),teacher?Promise.resolve(null):getDoc(item(code,'members',user.uid))]);
   check(teacher||profile?.data()?.name,'이름을 입력하고 우리 반에 다시 입장해 주세요.');
   return assemble(code,user.uid,{base,alerts,progress,submissions,receipts,members,profile});
 }
 // Firestore listeners receive only changes; no five-second polling of photos or state.
-export function watchState(onState:(state:State)=>void,onError:(error:Error)=>void) {
+export function watchState(onState:(state:State)=>void,onError:(error:Error)=>void,options:{includeSubmissions?:boolean}={}) {
   const {code,user}=context(),parts:Partial<Parts>={members:null,profile:null};let active=true,generation=0,started=false,isTeacher=false;
   const stops:Array<()=>void>=[];
-  const emit=()=>{if(!active||!parts.base||!parts.alerts||!parts.progress||!parts.submissions||!parts.receipts||(!isTeacher&&!parts.profile)||(isTeacher&&!parts.members))return;const own=++generation;assemble(code,user.uid,parts as Parts).then(state=>{if(active&&own===generation)onState(state)}).catch(e=>active&&onError(friendly(e)));};
+  const emit=()=>{if(!active||!parts.base||!parts.alerts||(!isTeacher&&!parts.progress)||((!isTeacher||options.includeSubmissions)&&!parts.submissions)||!parts.receipts||(!isTeacher&&!parts.profile)||(isTeacher&&!parts.members))return;const own=++generation;assemble(code,user.uid,parts as Parts).then(state=>{if(active&&own===generation)onState(state)}).catch(e=>active&&onError(friendly(e)));};
   const listenQuery=(key:'alerts'|'submissions'|'receipts'|'members',q:Query)=>stops.push(onSnapshot(q,snapshot=>{parts[key]=snapshot;emit();},error=>active&&onError(friendly(error))));
   stops.push(onSnapshot(classRef(code),snapshot=>{
     if(!snapshot.exists()){onError(new Error('반을 찾을 수 없어요.'));return;}parts.base=snapshot;
-    if(!started){started=true;const teacher=snapshot.data().ownerUid===user.uid,q=queries(code,user.uid,teacher);isTeacher=teacher;listenQuery('alerts',q.alerts);listenQuery('submissions',q.submissions);listenQuery('receipts',q.receipts);if(teacher)listenQuery('members',bucket(code,'members'));else stops.push(onSnapshot(item(code,'members',user.uid),p=>{parts.profile=p;emit();},e=>active&&onError(friendly(e))));
-      stops.push(onSnapshot(item(code,'progress',user.uid),p=>{parts.progress=p;emit();},e=>active&&onError(friendly(e))));}
+    if(!started){started=true;const teacher=snapshot.data().ownerUid===user.uid,q=queries(code,user.uid,teacher);isTeacher=teacher;listenQuery('alerts',q.alerts);if(!teacher||options.includeSubmissions)listenQuery('submissions',q.submissions);listenQuery('receipts',q.receipts);if(teacher)listenQuery('members',bucket(code,'members'));else stops.push(onSnapshot(item(code,'members',user.uid),p=>{parts.profile=p;emit();},e=>active&&onError(friendly(e))));
+      if(!teacher)stops.push(onSnapshot(item(code,'progress',user.uid),p=>{parts.progress=p;emit();},e=>active&&onError(friendly(e))));}
     emit();
   },error=>active&&onError(friendly(error))));
   return ()=>{active=false;stops.forEach(stop=>stop());};
@@ -103,9 +105,10 @@ export async function api(path:string,body?:any):Promise<any> {
       const previous=storedCode();
       if(auth.currentUser?.isAnonymous&&classroomByCode(previous)){await disablePush(previous);await deleteDoc(item(previous,'members',auth.currentUser.uid));}
       if(auth.currentUser)await signOut(auth);localStorage.removeItem(KEY);photos.clear();photoRefs.clear();
-      if(body.role==='teacher') {await signInWithEmailAndPassword(auth,teacherEmail(code),password);const c=await getDoc(classRef(code));check(c.data()?.ownerUid===auth.currentUser!.uid,'교사용 입장 정보를 확인해 주세요.');}
+      let joinedBase:DocumentSnapshot|undefined;
+      if(body.role==='teacher') {await signInWithEmailAndPassword(auth,teacherEmail(code),password);const c=await getDoc(classRef(code));joinedBase=c;check(c.data()?.ownerUid===auth.currentUser!.uid,'교사용 입장 정보를 확인해 주세요.');}
       else {const credential=await signInAnonymously(auth);try{await setDoc(item(code,'members',credential.user.uid),{name,joinedAt:serverTimestamp()});}catch(error){await signOut(auth);throw error;}}
-      localStorage.setItem(KEY,code);return {ok:true};
+      localStorage.setItem(KEY,code);return await readState(false,joinedBase);
     }
     if(path==='session') {
       if(!auth.currentUser||!classroomByCode(storedCode()))return {session:null};
@@ -122,10 +125,22 @@ export async function api(path:string,body?:any):Promise<any> {
         throw error;
       }
     }
-    if(path==='state')return readState();
+    if(path==='state')return readState(body?.includeSubmissions===true);
     const {code,user,ref}=context();
     if(path==='logout') {if(user.isAnonymous){await disablePush(code);await deleteDoc(item(code,'members',user.uid));}localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}
-    if(path==='settings') {const trip={...body.trip,className:classroomByCode(code)!.name} as Trip;await updateDoc(ref,{...encodeTrip(trip,photoId(code,trip.meeting.photoUrl)),updatedAt:serverTimestamp()});return {ok:true};}
+    if(path==='settings') {
+      const trip={...body.trip,className:classroomByCode(code)!.name} as Trip,encoded=encodeTrip(trip,photoId(code,trip.meeting.photoUrl));
+      const descriptions=body.eventDescriptions||{};check(typeof descriptions==='object'&&!Array.isArray(descriptions),'상세 설명을 확인해 주세요.');
+      const entries=Object.entries(descriptions),ids=new Set(trip.days.flatMap(events=>events.map(event=>event.id)));check(entries.length<=60,'일정 수를 확인해 주세요.');
+      for(const [id,description]of entries)check(ids.has(id)&&typeof description==='string'&&description.length<=4000,'상세 설명을 확인해 주세요.');
+      await runTransaction(db,async tx=>{
+        const snapshots=await Promise.all(entries.map(([id])=>tx.get(item(code,'eventDetails',encodeURIComponent(id)))));
+        tx.update(ref,{...encoded,updatedAt:serverTimestamp()});
+        entries.forEach(([id,description],index)=>tx.set(item(code,'eventDetails',encodeURIComponent(id)),{eventId:id,description:(description as string).trim(),photoId:snapshots[index].data()?.photoId||'',updatedAt:serverTimestamp()}));
+      });return {ok:true};
+    }
+    if(path==='event/descriptions') {check(Array.isArray(body.ids)&&body.ids.length<=60&&body.ids.every((id:unknown)=>typeof id==='string'&&id.length>0&&id.length<=100),'일정을 확인해 주세요.');return Object.fromEntries(await Promise.all(body.ids.map(async(id:string)=>{const snapshot=await getDoc(item(code,'eventDetails',encodeURIComponent(id)));return [id,snapshot.data()?.description||''];})));}
+
     if(path==='event/detail'){check(typeof body.id==='string'&&body.id.length>0&&body.id.length<=100,'일정을 확인해 주세요.');const snapshot=await getDoc(item(code,'eventDetails',encodeURIComponent(body.id)));const data=snapshot.data();return {description:data?.description||'',photoUrl:await resolvePhoto(code,data?.photoId||'')};}
     if(path==='event/detail/save'){check(typeof body.id==='string'&&body.id.length>0&&body.id.length<=100&&typeof body.description==='string'&&body.description.length<=4000,'상세 내용을 확인해 주세요.');const base=await getDoc(ref);check(decodeTrip(base.data()).days.some(day=>day.some(event=>event.id===body.id)),'일정을 찾을 수 없어요.');await setDoc(item(code,'eventDetails',encodeURIComponent(body.id)),{eventId:body.id,description:body.description.trim(),photoId:photoId(code,body.photoUrl||''),updatedAt:serverTimestamp()});return {ok:true};}
     if(path==='meeting/save') {const meeting=meetingData(body,photoId(code,body.photoUrl||''));await updateDoc(ref,{meeting,updatedAt:serverTimestamp()});return {ok:true};}

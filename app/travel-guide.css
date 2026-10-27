@@ -16,3 +16,5 @@
 .schedule-v3 .lined-timeline .event-line{grid-template-columns:max-content minmax(0,1fr) auto;column-gap:12px;align-items:start}.schedule-v3 .lined-timeline .event-line>time{min-width:0;font-size:18px;font-weight:400;line-height:30px;align-self:start;white-space:nowrap}.schedule-v3 .lined-timeline .event-name-row{align-self:start;line-height:30px;margin:0}.schedule-v3 .lined-timeline .event-name-row>span{line-height:30px}@media(max-width:520px){.schedule-v3 .lined-timeline .event-line{column-gap:9px}.schedule-v3 .lined-timeline .event-line>time{font-size:16px}}
 .event-more-button{line-height:18px;box-sizing:border-box}
 .event-gather .gather-map-link{display:flex;align-items:center;width:fit-content;gap:4px;margin-top:7px;color:#087e78;text-decoration:underline;text-underline-offset:3px}
+
+.modal.schedule-detail{position:fixed;inset:0;margin:auto;max-height:calc(100dvh - 32px);overscroll-behavior:contain}
