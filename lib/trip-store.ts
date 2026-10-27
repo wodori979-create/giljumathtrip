@@ -3,6 +3,7 @@ import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,query,where,ord
 import {auth,db,emulator} from './firebase-client';
 import {type State,type Trip,type Meeting,type Alert} from './trip';
 import {CLASS_CODE,MAX_PHOTO_BYTES,MAX_PHOTO_DATA,check,teacherEmail,encodeTrip,decodeTrip,meetingData} from './free-data';
+import {confirmationRoster} from './student-status';
 import {sendPush,disablePush} from './push';
 import {classroomByCode,classroomById,studentName,teacherCredential} from './classrooms';
 
@@ -45,7 +46,7 @@ async function assemble(code:string,uid:string,parts:Parts):Promise<State> {
   trip.meeting.photoUrl=await resolvePhoto(code,raw.meeting.photoId);
   const receipts=parts.receipts.docs.map(doc=>doc.data());
   const alerts=await Promise.all(parts.alerts.docs.map(async doc=>{
-    const a=doc.data();return {id:doc.id,place:a.place,time:a.time,note:a.note,photoUrl:await resolvePhoto(code,a.photoId),created:milliseconds(a.createdAt),read:receipts.some(r=>r.alertId===doc.id&&r.studentUid===uid),...(teacher?{readCount:receipts.filter(r=>r.alertId===doc.id).length}:{})};
+    const a=doc.data(),roster=teacher?confirmationRoster(parts.members!.docs.filter(m=>m.id!==raw.ownerUid).map(m=>({uid:m.id,name:m.data().name||'이름 없음'})),receipts.filter(r=>r.alertId===doc.id).map(r=>r.studentUid)):null;return {id:doc.id,place:a.place,time:a.time,note:a.note,photoUrl:await resolvePhoto(code,a.photoId),created:milliseconds(a.createdAt),read:receipts.some(r=>r.alertId===doc.id&&r.studentUid===uid),...(teacher?{readCount:roster!.confirmedStudents.length,...roster}:{})};
   }));
   return {role:teacher?'teacher':'student',code,trip,alerts,studentName:teacher?'':parts.profile?.data()?.name||'',
     completedMissions:(parts.progress.data()?.completedMissions||[]).filter((id:string)=>valid.has(id)),
@@ -67,7 +68,7 @@ async function readState():Promise<State> {
 export function watchState(onState:(state:State)=>void,onError:(error:Error)=>void) {
   const {code,user}=context(),parts:Partial<Parts>={members:null,profile:null};let active=true,generation=0,started=false,isTeacher=false;
   const stops:Array<()=>void>=[];
-  const emit=()=>{if(!active||!parts.base||!parts.alerts||!parts.progress||!parts.submissions||!parts.receipts||(!isTeacher&&!parts.profile))return;const own=++generation;assemble(code,user.uid,parts as Parts).then(state=>{if(active&&own===generation)onState(state)}).catch(e=>active&&onError(friendly(e)));};
+  const emit=()=>{if(!active||!parts.base||!parts.alerts||!parts.progress||!parts.submissions||!parts.receipts||(!isTeacher&&!parts.profile)||(isTeacher&&!parts.members))return;const own=++generation;assemble(code,user.uid,parts as Parts).then(state=>{if(active&&own===generation)onState(state)}).catch(e=>active&&onError(friendly(e)));};
   const listenQuery=(key:'alerts'|'submissions'|'receipts'|'members',q:Query)=>stops.push(onSnapshot(q,snapshot=>{parts[key]=snapshot;emit();},error=>active&&onError(friendly(error))));
   stops.push(onSnapshot(classRef(code),snapshot=>{
     if(!snapshot.exists()){onError(new Error('반을 찾을 수 없어요.'));return;}parts.base=snapshot;
@@ -125,11 +126,14 @@ export async function api(path:string,body?:any):Promise<any> {
     const {code,user,ref}=context();
     if(path==='logout') {if(user.isAnonymous){await disablePush(code);await deleteDoc(item(code,'members',user.uid));}localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}
     if(path==='settings') {const trip={...body.trip,className:classroomByCode(code)!.name} as Trip;await updateDoc(ref,{...encodeTrip(trip,photoId(code,trip.meeting.photoUrl)),updatedAt:serverTimestamp()});return {ok:true};}
+    if(path==='event/detail'){check(typeof body.id==='string'&&body.id.length>0&&body.id.length<=100,'일정을 확인해 주세요.');const snapshot=await getDoc(item(code,'eventDetails',encodeURIComponent(body.id)));const data=snapshot.data();return {description:data?.description||'',photoUrl:await resolvePhoto(code,data?.photoId||'')};}
+    if(path==='event/detail/save'){check(typeof body.id==='string'&&body.id.length>0&&body.id.length<=100&&typeof body.description==='string'&&body.description.length<=4000,'상세 내용을 확인해 주세요.');const base=await getDoc(ref);check(decodeTrip(base.data()).days.some(day=>day.some(event=>event.id===body.id)),'일정을 찾을 수 없어요.');await setDoc(item(code,'eventDetails',encodeURIComponent(body.id)),{eventId:body.id,description:body.description.trim(),photoId:photoId(code,body.photoUrl||''),updatedAt:serverTimestamp()});return {ok:true};}
     if(path==='meeting/save') {const meeting=meetingData(body,photoId(code,body.photoUrl||''));await updateDoc(ref,{meeting,updatedAt:serverTimestamp()});return {ok:true};}
     if(path==='broadcast') {
       const meeting=meetingData(body,photoId(code,body.photoUrl||'')),id=crypto.randomUUID(),batch=writeBatch(db);
       batch.set(item(code,'alerts',id),{...meeting,createdAt:serverTimestamp()});batch.update(ref,{meeting,updatedAt:serverTimestamp()});await batch.commit();return {ok:true,alertId:id,push:await sendPush(code,id)};
     }
+    if(path==='alert/remove'){check(/^[a-f0-9-]{36}$/.test(body.id),'집합 안내를 확인해 주세요.');await deleteDoc(item(code,'alerts',body.id));return {ok:true};}
     if(path==='push/retry')return {ok:true,alertId:body.id,push:await sendPush(code,body.id)};
     if(path==='ack') {const receipt=item(code,'receipts',body.id+'_'+user.uid);await runTransaction(db,async tx=>{if(!(await tx.get(receipt)).exists())tx.set(receipt,{alertId:body.id,studentUid:user.uid,createdAt:serverTimestamp()});});return {ok:true};}
     if(path==='mission'||path==='mission-photo/remove') {

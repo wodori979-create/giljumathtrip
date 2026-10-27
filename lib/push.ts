@@ -5,9 +5,9 @@ import config from './push-config.json';
 export type PushStatus='enabled'|'disabled'|'denied'|'unsupported'|'install'|'unconfigured'|'local';
 export type PushResult={sent:number;failed:number;expired:number;skipped:number;warning?:string};
 const subscriptionRef=(code:string,uid:string)=>doc(db,'sparkTrips',code,'pushSubscriptions',uid);
-function prerequisite():PushStatus|null {
-  if(emulator)return 'local';
-  if(!config.serverUrl||!config.publicKey)return 'unconfigured';
+function prerequisite(preview=false):PushStatus|null {
+  if(emulator&&!preview)return 'local';
+  if(!preview&&(!config.serverUrl||!config.publicKey))return 'unconfigured';
   const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   if(ios&&!window.matchMedia('(display-mode: standalone)').matches&&!(navigator as Navigator&{standalone?:boolean}).standalone)return 'install';
   if(!window.isSecureContext||!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))return 'unsupported';
@@ -36,11 +36,12 @@ export async function pushStatus(code:string):Promise<PushStatus> {
   if(!key||new Uint8Array(key).join(',')!==publicKey().join(','))return 'disabled';
   await save(code,sub);return 'enabled';
 }
-export async function enablePush(code:string):Promise<PushStatus> {
-  const reason=prerequisite();if(reason)return reason;
+export async function enablePush(code:string,preview=false):Promise<PushStatus> {
+  const reason=prerequisite(preview);if(reason)return reason;
   // Request permission directly from the student's tap, before asynchronous database work.
   const permission=await Notification.requestPermission();
   if(permission!=='granted')return permission==='denied'?'denied':'disabled';
+  if(preview)return 'enabled';
   const worker=await registration(),key=publicKey();let sub=await worker.pushManager.getSubscription();
   if(sub&&(!sub.options.applicationServerKey||new Uint8Array(sub.options.applicationServerKey).join(',')!==key.join(','))) {await sub.unsubscribe();sub=null;}
   if(!sub)sub=await worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});

@@ -82,13 +82,25 @@ service cloud.firestore {
           && base(code).missionIds.hasAll(request.resource.data.completedMissions);
         allow delete: if false;
       }
+      match /eventDetails/{id} {
+        allow get: if member(code);
+        allow list, delete: if false;
+        allow create, update: if owner(code)
+          && request.resource.data.keys().hasOnly(['eventId','description','photoId','updatedAt'])
+          && short(request.resource.data.eventId,100) && request.resource.data.eventId.size() > 0
+          && short(request.resource.data.description,4000)
+          && request.resource.data.updatedAt == request.time
+          && (request.resource.data.photoId == '' || (uuid(request.resource.data.photoId)
+            && exists(/databases/$(database)/documents/sparkTrips/$(code)/photos/$(request.resource.data.photoId))));
+      }
       match /alerts/{id} {
         allow read: if member(code);
         allow create: if owner(code) && uuid(id)
           && request.resource.data.keys().hasOnly(['place','time','note','photoId','createdAt'])
           && request.resource.data.createdAt == request.time
           && meeting({'place':request.resource.data.place,'time':request.resource.data.time,'note':request.resource.data.note,'photoId':request.resource.data.photoId},code);
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if owner(code);
       }
       match /pushSubscriptions/{uid} {
         allow get: if member(code) && (uid == request.auth.uid || owner(code));

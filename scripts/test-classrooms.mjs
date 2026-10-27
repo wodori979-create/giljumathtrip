@@ -49,6 +49,13 @@ try {
   await setDoc(path(t1,room1,'photos',photoId),{ownerUid:teachers[0].auth.currentUser.uid,photoData,createdAt:serverTimestamp()});
   assert.equal((await getDoc(path(s1,room1,'photos',photoId))).data().photoData,photoData);
   await denied(getDoc(path(t2,room1,'photos',photoId)));await denied(getDoc(path(s2,room1,'photos',photoId)));
+  const detailId=encodeURIComponent('10:30-박물관 관람'),detail={eventId:'10:30-박물관 관람',description:'자세한 관람 안내',photoId,updatedAt:serverTimestamp()};
+  await denied(setDoc(path(s1,room1,'eventDetails',detailId),detail));
+  await denied(setDoc(path(t2,room1,'eventDetails',detailId),detail));
+  await setDoc(path(t1,room1,'eventDetails',detailId),detail);
+  assert.equal((await getDoc(path(s1,room1,'eventDetails',detailId))).data().description,'자세한 관람 안내');
+  await denied(getDoc(path(s2,room1,'eventDetails',detailId)));
+  await denied(updateDoc(path(s1,room1,'eventDetails',detailId),{description:'학생 수정',updatedAt:serverTimestamp()}));
   const submission={studentUid:uid1,studentName:'김여행',missionId:'museum-memory',photoData,submittedAt:serverTimestamp()};
   await denied(setDoc(path(s1,room1,'submissions',uid1+'_museum-memory'),{...submission,studentName:'다른 학생'}));
   await setDoc(path(s1,room1,'submissions',uid1+'_museum-memory'),submission);
@@ -60,11 +67,15 @@ try {
   assert.equal((await getDoc(path(s1,room1,'alerts',alertId))).data().place,'1반 전용 소집 장소');
   await denied(getDoc(path(s2,room1,'alerts',alertId)));
   assert.equal((await getDocs(collection(s2,'sparkTrips',room2.code,'alerts'))).size,0);
+  await denied(deleteDoc(path(s1,room1,'alerts',alertId)));
+  await denied(deleteDoc(path(t2,room1,'alerts',alertId)));
+  await deleteDoc(path(t1,room1,'alerts',alertId));
+  assert.equal((await getDoc(path(s1,room1,'alerts',alertId))).exists(),false,'Only the owning teacher may delete an alert; students see it removed');
   await setDoc(path(s1,room1,'progress',uid1),{completedMissions:['museum-memory'],updatedAt:serverTimestamp()});
   await denied(getDoc(path(t2,room1,'progress',uid1)));
   await deleteDoc(path(s1,room1,'members',uid1));await denied(getDoc(path(s1,room1)));
   assert.equal((await getDoc(path(t1,room1,'submissions',uid1+'_museum-memory'))).data().studentName,'김여행','Teacher retains submitter name after student leaves');
-  console.log('PASS: all 5 real emulator teacher logins, wrong-class PIN rejection, required names, identical names isolated, teacher/student cross-class read/write denied, separate schedules/photos/missions/alerts/progress, submitter attribution, logout revocation.');
+  console.log('PASS: all 5 real emulator teacher logins, wrong-class PIN rejection, required names, identical names isolated, teacher/student cross-class read/write denied, separate schedules/photos/missions/alerts/progress, submitter attribution, logout revocation, owning-teacher-only alert deletion, member-only event detail reads and teacher-only writes.');
 }finally{
   await Promise.all(clients.map(async c=>{await terminate(c.db);await deleteApp(c.app);}));
   await env.clearFirestore();await env.cleanup();
