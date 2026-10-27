@@ -1,5 +1,7 @@
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+// Keep navigation online and avoid caching classroom or student data.
+self.addEventListener('fetch',event=>{if(event.request.mode==='navigate')event.respondWith(fetch(event.request));});
 self.addEventListener('push',event=>{
   let notice;try{notice=event.data.json();}catch{return;}
   if(!notice||!/^\w{8}$/.test(notice.code)||! /^[a-f0-9-]{36}$/.test(notice.notice))return;
