@@ -6,7 +6,7 @@ import {CLASS_CODE,MISSION_ID,MAX_PHOTO_BYTES,MAX_PHOTO_DATA,check,teacherEmail,
 import {confirmationRoster} from './student-status';
 import {sendPush,disablePush} from './push';
 import {signInStudent} from './student-auth';
-import {classroomByCode,classroomById,studentName,teacherCredential,isStudentAccount} from './classrooms';
+import {classroomByCode,classroomById,studentName,teacherCredential,isStudentAccount,studentCredential} from './classrooms';
 
 const KEY='gilju-trip-classroom-v2';
 let leaving=false;
@@ -69,6 +69,14 @@ async function readState(initialBase?:DocumentSnapshot):Promise<State> {
   check(teacher||profile?.data()?.name,'이름을 입력하고 우리 반에 다시 입장해 주세요.');
   return assemble(code,user.uid,{base,alerts,progress,submissions,receipts,members,profile});
 }
+// Show the itinerary as soon as membership is verified. Existing listeners hydrate
+// notices, receipts, mission progress and photos in the background without duplicate queries.
+async function readStudentEntry(verifiedName?:string):Promise<State>{
+ const {code,user,ref}=context();
+ const [base,name]=await Promise.all([getDoc(ref),verifiedName?Promise.resolve(verifiedName):getDoc(item(code,'members',user.uid)).then(p=>p.data()?.name)]);
+ check(base.exists(),'반을 찾을 수 없어요.');check(name,'이름을 입력하고 우리 반에 다시 입장해 주세요.');
+ return {role:'student',code,trip:decodeTrip(base.data()),studentName:name,alerts:[],completedMissions:[],missionSubmissions:[],missionSubmissionsReady:false,studentCount:0};
+}
 // Firestore listeners receive only changes; no five-second polling of photos or state.
 export function watchState(onState:(state:State)=>void,onError:(error:Error)=>void,onRemoved?:()=>void) {
   const {code,user}=context(),parts:Partial<Parts>={members:null,profile:null};let active=true,generation=0,started=false,isTeacher=false;
@@ -106,13 +114,14 @@ export async function api(path:string,body?:any):Promise<any> {
       const room=classroomById(body.roomId),code=room.code;
       check(body.role==='teacher'||body.role==='student','학생 또는 선생님을 선택해 주세요.');
       const name=body.role==='student'?studentName(body.name):'',password=body.role==='teacher'?await teacherCredential(code,body.password):'';
+      const reuseStudent=body.role==='student'&&auth.currentUser?.email===(await studentCredential(code,name)).email;
       leaving=true;const previous=storedCode();
-      if(isStudentAccount(auth.currentUser)&&classroomByCode(previous))await disablePush(previous,{localOnly:true});
-      if(auth.currentUser)await signOut(auth);localStorage.removeItem(KEY);photos.clear();photoRefs.clear();
+      if(!reuseStudent&&isStudentAccount(auth.currentUser)&&classroomByCode(previous))await disablePush(previous,{localOnly:true});
+      if(!reuseStudent){if(auth.currentUser)await signOut(auth);localStorage.removeItem(KEY);photos.clear();photoRefs.clear();}
       let joinedBase:DocumentSnapshot|undefined;
       if(body.role==='teacher') {await signInWithEmailAndPassword(auth,teacherEmail(code),password);const c=await getDoc(classRef(code));joinedBase=c;check(c.data()?.ownerUid===auth.currentUser!.uid,'교사용 입장 정보를 확인해 주세요.');}
       else {const credential=await signInStudent(auth,code,name);try{const profile=item(code,'members',credential.user.uid);await runTransaction(db,async tx=>{const existing=await tx.get(profile);if(!existing.exists())tx.set(profile,{name,joinedAt:serverTimestamp()});else check(existing.data().name===name,'학생 이름을 확인해 주세요.');});}catch(error){await signOut(auth);throw error;}}
-      localStorage.setItem(KEY,code);leaving=false;return await readState(joinedBase);
+      localStorage.setItem(KEY,code);leaving=false;return body.role==='student'?await readStudentEntry(name):await readState(joinedBase);
     }
     if(path==='session') {
       if(!auth.currentUser||!classroomByCode(storedCode()))return {session:null};
@@ -120,7 +129,7 @@ export async function api(path:string,body?:any):Promise<any> {
         // Emulator accounts may be recreated after a local restart while the browser
         // still has the previous session. Refresh before any Firestore listeners.
         if(emulator)await auth.currentUser.getIdToken(true);
-        leaving=false;return await readState();
+        leaving=false;return isStudentAccount(auth.currentUser)?await readStudentEntry():await readState();
       }catch(error:any){
         const expired=['auth/invalid-refresh-token','auth/invalid-user-token','auth/user-token-expired','auth/user-disabled','auth/user-not-found'].includes(error.code);
         if(expired||error.code==='permission-denied'||error.code==='unauthenticated'||error.message==='반을 찾을 수 없어요.'||error.message==='이름을 입력하고 우리 반에 다시 입장해 주세요.'){
