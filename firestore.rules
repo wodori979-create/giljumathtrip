@@ -11,6 +11,9 @@ service cloud.firestore {
     function short(s, length) { return s is string && s.size() <= length; }
     function image(s) { return short(s, 240023) && s.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$'); }
     function uuid(s) { return s is string && s.matches('^[a-f0-9-]{36}$'); }
+    function fixedRoom(code) { return code in ['GILJU6AA','GILJU6AB','GILJU6AC','GILJU6AD','GILJU6AE']; }
+    function roomName(code) { return {'GILJU6AA':'6학년 1반','GILJU6AB':'6학년 2반','GILJU6AC':'6학년 3반','GILJU6AD':'6학년 4반','GILJU6AE':'6학년 5반'}[code]; }
+    function name(s) { return short(s,20) && s.size() > 0 && s.matches('.*[^ ].*'); }
     function meeting(m, code) {
       return m is map && m.keys().hasOnly(['place','time','note','photoId'])
         && short(m.place,100) && m.place.size() > 0 && short(m.note,200)
@@ -21,6 +24,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['ownerUid','createdAt','updatedAt','className','teacherName','title','startDate','activeDay','daysJson','missionIds','meeting'])
         && short(d.ownerUid,128) && d.createdAt is timestamp && d.updatedAt == request.time
         && short(d.className,40) && d.className.size() > 0 && short(d.teacherName,40)
+        && (!fixedRoom(code) || d.className == roomName(code))
         && short(d.title,100) && short(d.startDate,10) && d.activeDay in [1,2,3]
         && short(d.daysJson,500000) && d.missionIds is list && d.missionIds.size() <= 480
         && meeting(d.meeting,code);
@@ -43,7 +47,8 @@ service cloud.firestore {
         allow create, update: if signed() && uid == request.auth.uid
           && exists(/databases/$(database)/documents/sparkTrips/$(code))
           && request.auth.token.firebase.sign_in_provider == 'anonymous'
-          && request.resource.data.keys().hasOnly(['joinedAt']) && request.resource.data.joinedAt == request.time;
+          && request.resource.data.keys().hasOnly(['name','joinedAt']) && request.resource.data.joinedAt == request.time
+          && (fixedRoom(code) ? name(request.resource.data.name) : (!('name' in request.resource.data) || name(request.resource.data.name)));
         allow delete: if signed() && uid == request.auth.uid;
       }
       match /photos/{id} {
@@ -58,8 +63,9 @@ service cloud.firestore {
       match /submissions/{id} {
         allow read: if member(code) && (owner(code) || resource.data.studentUid == request.auth.uid);
         allow create, update: if student(code)
-          && request.resource.data.keys().hasOnly(['studentUid','missionId','photoData','submittedAt'])
+          && request.resource.data.keys().hasOnly(['studentUid','studentName','missionId','photoData','submittedAt'])
           && request.resource.data.studentUid == request.auth.uid
+          && (fixedRoom(code) ? (name(request.resource.data.studentName) && request.resource.data.studentName == get(/databases/$(database)/documents/sparkTrips/$(code)/members/$(request.auth.uid)).data.name) : !('studentName' in request.resource.data) || name(request.resource.data.studentName))
           && request.resource.data.missionId is string && request.resource.data.missionId.matches('^[A-Za-z0-9_-]{1,100}$')
           && id == request.auth.uid + '_' + request.resource.data.missionId
           && request.resource.data.missionId in base(code).missionIds

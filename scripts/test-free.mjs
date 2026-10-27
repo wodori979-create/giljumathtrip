@@ -4,7 +4,7 @@ import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/ru
 import {doc,collection,getDoc,getDocs,setDoc,updateDoc,deleteDoc,serverTimestamp,query,where,onSnapshot} from 'firebase/firestore';
 import {defaultTrip} from '../lib/trip.ts';
 
-const env=await initializeTestEnvironment({projectId:'demo-gilju-trip',firestore:{host:'127.0.0.1',port:8080,rules:await readFile(new URL('../firestore.rules',import.meta.url),'utf8')}});
+const env=await initializeTestEnvironment({projectId:'demo-gilju-trip-rules-test',firestore:{host:'127.0.0.1',port:8080,rules:await readFile(new URL('../firestore.rules',import.meta.url),'utf8')}});
 const teacher=(uid,code)=>env.authenticatedContext(uid,{email:code.toLowerCase()+'@class.gilju-trip.invalid',firebase:{sign_in_provider:'password'}}).firestore();
 const student=uid=>env.authenticatedContext(uid,{firebase:{sign_in_provider:'anonymous'}}).firestore();
 const code='SAMPLE23',otherCode='OTHER234',owner=teacher('teacher-one',code),otherOwner=teacher('teacher-two',otherCode),s=student('student-one'),peer=student('student-two'),other=student('student-other'),stranger=student('stranger'),anonymous=env.unauthenticatedContext().firestore();

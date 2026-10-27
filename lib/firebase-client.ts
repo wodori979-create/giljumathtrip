@@ -3,7 +3,8 @@ import {getAuth, connectAuthEmulator} from 'firebase/auth';
 import {getFirestore, connectFirestoreEmulator} from 'firebase/firestore';
 import config from './firebase-config.json';
 
-const emulator=import.meta.env.DEV&&import.meta.env.VITE_USE_FIREBASE_EMULATORS==='true';
+// Development defaults to isolated local services. Production builds use the live project.
+export const emulator=import.meta.env.DEV&&import.meta.env.VITE_USE_FIREBASE_EMULATORS!=='false';
 export const firebaseApp=initializeApp(emulator?{...config,projectId:'demo-gilju-trip',apiKey:'demo-key',authDomain:'localhost'}:config);
 export const auth=getAuth(firebaseApp);
 export const db=getFirestore(firebaseApp);

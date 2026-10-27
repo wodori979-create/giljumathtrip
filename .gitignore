@@ -48,6 +48,7 @@ yarn-error.log*
 .firebase/
 *-debug.log*
 firebase-debug.log
+/firebase-export-*/
 /functions/node_modules/
 /functions/lib/
 /functions/.env*

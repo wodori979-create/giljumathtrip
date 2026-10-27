@@ -1,11 +1,12 @@
 import {doc,setDoc,deleteDoc,serverTimestamp} from 'firebase/firestore';
-import {auth,db} from './firebase-client';
+import {auth,db,emulator} from './firebase-client';
 import config from './push-config.json';
 
-export type PushStatus='enabled'|'disabled'|'denied'|'unsupported'|'install'|'unconfigured';
+export type PushStatus='enabled'|'disabled'|'denied'|'unsupported'|'install'|'unconfigured'|'local';
 export type PushResult={sent:number;failed:number;expired:number;skipped:number;warning?:string};
 const subscriptionRef=(code:string,uid:string)=>doc(db,'sparkTrips',code,'pushSubscriptions',uid);
 function prerequisite():PushStatus|null {
+  if(emulator)return 'local';
   if(!config.serverUrl||!config.publicKey)return 'unconfigured';
   const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   if(ios&&!window.matchMedia('(display-mode: standalone)').matches&&!(navigator as Navigator&{standalone?:boolean}).standalone)return 'install';
@@ -52,6 +53,7 @@ export async function disablePush(code:string) {
 }
 export async function sendPush(code:string,alertId:string):Promise<PushResult> {
   const totals:PushResult={sent:0,failed:0,expired:0,skipped:0};
+  if(emulator)return {...totals,warning:'로컬 확인 중이에요. 실제 휴대폰 푸시는 보내지 않고, 우리 반 모여라! 탭에 안내를 표시했어요.'};
   if(!config.serverUrl)return {...totals,warning:'안내는 저장했지만 푸시 서버 연결이 아직 준비되지 않았어요.'};
   try {
     const user=auth.currentUser;if(!user||user.isAnonymous)throw new Error('교사 로그인이 필요해요.');

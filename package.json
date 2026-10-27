@@ -10,8 +10,11 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "emulators": "firebase emulators:start --project demo-gilju-trip --only hosting,auth,firestore",
+    "emulators": "firebase emulators:start --project demo-gilju-trip --only auth,firestore --import=work/local-emulator-data --export-on-exit=work/local-emulator-data",
     "test:local": "node scripts/test-free.mjs",
+    "setup:local": "node --env-file=.env.local scripts/setup-local-classrooms.mjs",
+    "backup:local": "node scripts/backup-local.mjs",
+    "test:classrooms": "node --env-file=.env.local scripts/test-classrooms.mjs",
     "deploy": "npm run build && firebase deploy --only firestore,hosting"
   },
   "dependencies": {
