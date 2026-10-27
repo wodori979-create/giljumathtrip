@@ -1,8 +1,8 @@
 import {useEffect,useState} from 'react';
-import {BellRing,CheckCircle2,Info,LoaderCircle,X} from 'lucide-react';
+import {BellRing,CheckCircle2,LoaderCircle,X} from 'lucide-react';
 import {pushStatus,enablePush,disablePush,type PushStatus} from '@/lib/push';
 
-export default function PushSettings({code,demo,onHelp}:{code:string;demo:boolean;onHelp:()=>void}) {
+export default function PushSettings({code,demo}:{code:string;demo:boolean}) {
   const [status,setStatus]=useState<PushStatus|'checking'>('checking'),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [interacted,setInteracted]=useState(false),[dismissed,setDismissed]=useState(false);
   useEffect(()=>{setInteracted(false);try{setDismissed(sessionStorage.getItem('push-banner-dismissed:'+code)==='true');}catch{setDismissed(false);}},[code]);
@@ -17,5 +17,5 @@ export default function PushSettings({code,demo,onHelp}:{code:string;demo:boolea
   };
   const action=toggle;
   if(dismissed)return <button type="button" className="text-btn restore-push" onClick={restore}><BellRing size={15}/> 휴대폰 알림 설정</button>;
-  return <section className={'push-settings '+(status==='enabled'?'is-enabled':'')} aria-label="휴대폰 푸시 알림">{(interacted||status==='enabled')&&<button type="button" className="push-dismiss" aria-label="알림 설정 안내 닫기" onClick={dismiss}><X size={18}/></button>}<div className="push-settings-icon">{status==='enabled'?<CheckCircle2 size={24}/>:<BellRing size={24}/>}</div><div className="push-settings-copy"><b>{status==='local'?'우리 반 집합 안내를 확인해요':status==='enabled'?'휴대폰 알림이 켜졌어요':'선생님이 부르면, 바로 알 수 있게'}</b><p>{demo&&status==='enabled'?'미리보기의 기기 알림 권한을 허용했어요. 실제 학생 알림은 전송하지 않아요.':descriptions[status]}</p>{error&&<p className="push-error" role="alert">{error}</p>}</div><div className="push-settings-actions"><button className={'button '+(status==='enabled'?'teal':'notification-enable')+(!interacted&&status!=='enabled'&&status!=='checking'?' attention-blink':'')} type="button" onClick={()=>{setInteracted(true);action();}} disabled={busy||status==='checking'}>{busy?<LoaderCircle size={16} className="spin"/>:null}{status==='local'?'휴대폰 알림 켜기':status==='enabled'?'알림 끄기':'휴대폰 알림 켜기'}</button>{status!=='local'&&<button className="text-btn" type="button" onClick={onHelp}><Info size={14}/> 이용 안내</button>}</div></section>;
+  return <section className={'push-settings '+(status==='enabled'?'is-enabled':'')} aria-label="휴대폰 푸시 알림">{(interacted||status==='enabled')&&<button type="button" className="push-dismiss" aria-label="알림 설정 안내 닫기" onClick={dismiss}><X size={18}/></button>}<div className="push-settings-icon">{status==='enabled'?<CheckCircle2 size={24}/>:<BellRing size={24}/>}</div><div className="push-settings-copy"><b>{status==='local'?'우리 반 집합 안내를 확인해요':status==='enabled'?'휴대폰 알림이 켜졌어요':'선생님이 부르면, 바로 알 수 있게'}</b><p>{demo&&status==='enabled'?'미리보기의 기기 알림 권한을 허용했어요. 실제 학생 알림은 전송하지 않아요.':descriptions[status]}</p>{error&&<p className="push-error" role="alert">{error}</p>}</div><div className="push-settings-actions"><button className={'button '+(status==='enabled'?'teal':'notification-enable')+(!interacted&&status!=='enabled'&&status!=='checking'?' attention-blink':'')} type="button" onClick={()=>{setInteracted(true);action();}} disabled={busy||status==='checking'}>{busy?<LoaderCircle size={16} className="spin"/>:null}{status==='local'?'휴대폰 알림 켜기':status==='enabled'?'알림 끄기':'휴대폰 알림 켜기'}</button></div></section>;
 }
