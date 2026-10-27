@@ -20,3 +20,5 @@
 .modal.schedule-detail{position:fixed;inset:0;margin:auto;max-height:calc(100dvh - 32px);overscroll-behavior:contain}
 
 .event-lodging{display:flex;align-items:flex-start;gap:9px;padding:14px 16px;margin:12px 0;background:#fff4de;border:1px solid #eadbb9;border-radius:12px;color:#493d25;line-height:1.8}.event-lodging>svg{flex-shrink:0;margin-top:5px}.event-lodging b{display:block;font-size:12px;color:#756441}.event-lodging span{font-size:15px;overflow-wrap:anywhere}
+
+.photo-page-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.photo-page-heading h2{margin-bottom:0}.photo-page-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:24px}.photo-page-controls>span{font-size:13px;white-space:nowrap}.photo-loading{display:flex;align-items:center;gap:8px;margin:18px 0;color:#087e78}.teacher-photo-page>.caption{margin:16px 0}.teacher-photo-page .submission-gallery{margin-top:16px}

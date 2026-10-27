@@ -1,8 +1,8 @@
 import {onAuthStateChanged,signInWithEmailAndPassword,signInAnonymously,signOut} from 'firebase/auth';
-import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,onSnapshot,type DocumentData,type DocumentSnapshot,type QuerySnapshot,type Query} from 'firebase/firestore';
+import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,query,where,orderBy,documentId,startAfter,limit,serverTimestamp,writeBatch,runTransaction,onSnapshot,type DocumentData,type DocumentSnapshot,type QuerySnapshot,type Query} from 'firebase/firestore';
 import {auth,db,emulator} from './firebase-client';
 import {type State,type Trip,type Meeting,type Alert} from './trip';
-import {CLASS_CODE,MAX_PHOTO_BYTES,MAX_PHOTO_DATA,check,teacherEmail,encodeTrip,decodeTrip,meetingData} from './free-data';
+import {CLASS_CODE,MISSION_ID,MAX_PHOTO_BYTES,MAX_PHOTO_DATA,check,teacherEmail,encodeTrip,decodeTrip,meetingData} from './free-data';
 import {confirmationRoster} from './student-status';
 import {sendPush,disablePush} from './push';
 import {classroomByCode,classroomById,studentName,teacherCredential} from './classrooms';
@@ -51,30 +51,30 @@ async function assemble(code:string,uid:string,parts:Parts):Promise<State> {
   trip.meeting.photoUrl=meetingPhotoUrl;
   return {role:teacher?'teacher':'student',code,trip,alerts,studentName:teacher?'':parts.profile?.data()?.name||'',
     completedMissions:(parts.progress?.data()?.completedMissions||[]).filter((id:string)=>valid.has(id)),
-    missionSubmissionsReady:!!parts.submissions,
+    missionSubmissionsReady:teacher||!!parts.submissions,
     missionSubmissions:(parts.submissions?.docs||[]).map(doc=>({id:doc.id,...doc.data()} as DocumentData)).filter(s=>valid.has(s.missionId)).sort((a,b)=>milliseconds(b.submittedAt)-milliseconds(a.submittedAt)).map(s=>({id:s.id,missionId:s.missionId,photoUrl:s.photoData,submitted:milliseconds(s.submittedAt),studentName:s.studentName||parts.members?.docs.find(m=>m.id===s.studentUid)?.data().name||''})),
     studentCount:parts.members?.docs.filter(doc=>doc.id!==raw.ownerUid).length||0};
 }
 function queries(code:string,uid:string,teacher:boolean) {
   return {alerts:query(bucket(code,'alerts'),orderBy('createdAt','desc'),limit(20)),
-    submissions:teacher?bucket(code,'submissions'):query(bucket(code,'submissions'),where('studentUid','==',uid)),
+    submissions:teacher?null:query(bucket(code,'submissions'),where('studentUid','==',uid)),
     receipts:teacher?bucket(code,'receipts'):query(bucket(code,'receipts'),where('studentUid','==',uid))};
 }
-async function readState(includeSubmissions=false,initialBase?:DocumentSnapshot):Promise<State> {
+async function readState(initialBase?:DocumentSnapshot):Promise<State> {
   await ready;const {code,user,ref}=context(),base=initialBase||await getDoc(ref);check(base.exists(),'반을 찾을 수 없어요.');const teacher=base.data().ownerUid===user.uid,q=queries(code,user.uid,teacher);
-  const [alerts,progress,submissions,receipts,members,profile]=await Promise.all([getDocs(q.alerts),teacher?Promise.resolve(null):getDoc(item(code,'progress',user.uid)),!teacher||includeSubmissions?getDocs(q.submissions):Promise.resolve(null),getDocs(q.receipts),teacher?getDocs(bucket(code,'members')):Promise.resolve(null),teacher?Promise.resolve(null):getDoc(item(code,'members',user.uid))]);
+  const [alerts,progress,submissions,receipts,members,profile]=await Promise.all([getDocs(q.alerts),teacher?Promise.resolve(null):getDoc(item(code,'progress',user.uid)),teacher?Promise.resolve(null):getDocs(q.submissions!),getDocs(q.receipts),teacher?getDocs(bucket(code,'members')):Promise.resolve(null),teacher?Promise.resolve(null):getDoc(item(code,'members',user.uid))]);
   check(teacher||profile?.data()?.name,'이름을 입력하고 우리 반에 다시 입장해 주세요.');
   return assemble(code,user.uid,{base,alerts,progress,submissions,receipts,members,profile});
 }
 // Firestore listeners receive only changes; no five-second polling of photos or state.
-export function watchState(onState:(state:State)=>void,onError:(error:Error)=>void,options:{includeSubmissions?:boolean}={}) {
+export function watchState(onState:(state:State)=>void,onError:(error:Error)=>void) {
   const {code,user}=context(),parts:Partial<Parts>={members:null,profile:null};let active=true,generation=0,started=false,isTeacher=false;
   const stops:Array<()=>void>=[];
-  const emit=()=>{if(!active||!parts.base||!parts.alerts||(!isTeacher&&!parts.progress)||((!isTeacher||options.includeSubmissions)&&!parts.submissions)||!parts.receipts||(!isTeacher&&!parts.profile)||(isTeacher&&!parts.members))return;const own=++generation;assemble(code,user.uid,parts as Parts).then(state=>{if(active&&own===generation)onState(state)}).catch(e=>active&&onError(friendly(e)));};
+  const emit=()=>{if(!active||!parts.base||!parts.alerts||(!isTeacher&&!parts.progress)||(!isTeacher&&!parts.submissions)||!parts.receipts||(!isTeacher&&!parts.profile)||(isTeacher&&!parts.members))return;const own=++generation;assemble(code,user.uid,parts as Parts).then(state=>{if(active&&own===generation)onState(state)}).catch(e=>active&&onError(friendly(e)));};
   const listenQuery=(key:'alerts'|'submissions'|'receipts'|'members',q:Query)=>stops.push(onSnapshot(q,snapshot=>{parts[key]=snapshot;emit();},error=>active&&onError(friendly(error))));
   stops.push(onSnapshot(classRef(code),snapshot=>{
     if(!snapshot.exists()){onError(new Error('반을 찾을 수 없어요.'));return;}parts.base=snapshot;
-    if(!started){started=true;const teacher=snapshot.data().ownerUid===user.uid,q=queries(code,user.uid,teacher);isTeacher=teacher;listenQuery('alerts',q.alerts);if(!teacher||options.includeSubmissions)listenQuery('submissions',q.submissions);listenQuery('receipts',q.receipts);if(teacher)listenQuery('members',bucket(code,'members'));else stops.push(onSnapshot(item(code,'members',user.uid),p=>{parts.profile=p;emit();},e=>active&&onError(friendly(e))));
+    if(!started){started=true;const teacher=snapshot.data().ownerUid===user.uid,q=queries(code,user.uid,teacher);isTeacher=teacher;listenQuery('alerts',q.alerts);if(!teacher)listenQuery('submissions',q.submissions!);listenQuery('receipts',q.receipts);if(teacher)listenQuery('members',bucket(code,'members'));else stops.push(onSnapshot(item(code,'members',user.uid),p=>{parts.profile=p;emit();},e=>active&&onError(friendly(e))));
       if(!teacher)stops.push(onSnapshot(item(code,'progress',user.uid),p=>{parts.progress=p;emit();},e=>active&&onError(friendly(e))));}
     emit();
   },error=>active&&onError(friendly(error))));
@@ -108,7 +108,7 @@ export async function api(path:string,body?:any):Promise<any> {
       let joinedBase:DocumentSnapshot|undefined;
       if(body.role==='teacher') {await signInWithEmailAndPassword(auth,teacherEmail(code),password);const c=await getDoc(classRef(code));joinedBase=c;check(c.data()?.ownerUid===auth.currentUser!.uid,'교사용 입장 정보를 확인해 주세요.');}
       else {const credential=await signInAnonymously(auth);try{await setDoc(item(code,'members',credential.user.uid),{name,joinedAt:serverTimestamp()});}catch(error){await signOut(auth);throw error;}}
-      localStorage.setItem(KEY,code);return await readState(false,joinedBase);
+      localStorage.setItem(KEY,code);return await readState(joinedBase);
     }
     if(path==='session') {
       if(!auth.currentUser||!classroomByCode(storedCode()))return {session:null};
@@ -125,9 +125,18 @@ export async function api(path:string,body?:any):Promise<any> {
         throw error;
       }
     }
-    if(path==='state')return readState(body?.includeSubmissions===true);
+    if(path==='state')return readState();
     const {code,user,ref}=context();
     if(path==='logout') {if(user.isAnonymous){await disablePush(code);await deleteDoc(item(code,'members',user.uid));}localStorage.removeItem(KEY);await signOut(auth);photos.clear();photoRefs.clear();return {ok:true};}
+    if(path==='mission/submissions') {
+      check(!user.isAnonymous,'선생님만 제출 사진을 볼 수 있어요.');
+      check(typeof body?.missionId==='string'&&MISSION_ID.test(body.missionId),'미션을 확인해 주세요.');
+      check(body.cursor==null||(typeof body.cursor==='string'&&body.cursor.length>0&&body.cursor.length<=256&&!body.cursor.includes('/')),'사진 페이지를 확인해 주세요.');
+      const filters=[where('missionId','==',body.missionId),orderBy(documentId())];
+      const selected=body.cursor?query(bucket(code,'submissions'),...filters,startAfter(body.cursor),limit(12)):query(bucket(code,'submissions'),...filters,limit(12));
+      const snapshot=await getDocs(selected);
+      return {items:snapshot.docs.map(doc=>{const data=doc.data();return {id:doc.id,missionId:data.missionId,photoUrl:data.photoData,submitted:milliseconds(data.submittedAt),studentName:data.studentName||''};}),cursor:snapshot.docs.at(-1)?.id||null,hasMore:snapshot.size===12};
+    }
     if(path==='settings') {
       const trip={...body.trip,className:classroomByCode(code)!.name} as Trip,encoded=encodeTrip(trip,photoId(code,trip.meeting.photoUrl));
       const descriptions=body.eventDescriptions||{};check(typeof descriptions==='object'&&!Array.isArray(descriptions),'상세 설명을 확인해 주세요.');
