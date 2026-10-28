@@ -99,3 +99,11 @@
 
 .event-photo-zoom{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap}
 .event-photo-zoom>span{font-size:14px;min-width:44px;text-align:center}
+
+.pdf-page-surface{position:relative;background:#fff;width:100%}
+.pdf-page-surface>img{width:100%;height:100%;object-fit:contain}
+.pdf-page-status{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:120px;height:100%;padding:20px;text-align:center;color:#49665b}
+.pdf-page-status p{overflow-wrap:anywhere}
+.event-photo-tools>.pdf-original-button{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;font-size:14px}
+.pdf-load-error{padding:12px;color:#8d3434}
+.pdf-load-error>button{padding:8px 12px;margin-top:8px}

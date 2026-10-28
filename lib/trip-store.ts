@@ -148,19 +148,25 @@ export async function api(path:string,body?:any):Promise<any> {
       check(typeof body?.uid==='string'&&body.uid.length>0&&body.uid.length<=128&&!body.uid.includes('/')&&body.uid!==user.uid,'학생을 확인해 주세요.');
       const batch=writeBatch(db);batch.delete(item(code,'members',body.uid));batch.delete(item(code,'pushSubscriptions',body.uid));await batch.commit();return {ok:true};
     }
-    if(path==='teacher/reference') {
+    if(['teacher/reference','teacher/reference/page','teacher/reference/pdf'].includes(path)) {
       check(!isStudentAccount(user),'선생님만 참고자료를 볼 수 있어요.');
-      check(teacherMaterials.some(material=>material.id===body?.id),'참고자료를 확인해 주세요.');
-      const id=body.id,snapshot=await getDoc(item(code,'teacherMaterials',id));
+      const material=teacherMaterials.find(material=>material.id===body?.id);
+      check(material,'참고자료를 확인해 주세요.');
+      const id=material.id;
+      if(path==='teacher/reference/page') {
+        check(Number.isInteger(body.index)&&body.index>=0&&body.index<material.pageCount,'참고자료 페이지를 확인해 주세요.');
+        const page=await getDoc(item(code,'teacherMaterials',id+'-page-'+(body.index+1)));
+        check(page.exists(),'페이지를 불러오지 못했어요. 다시 눌러 주세요.');
+        return page.data()!.imageData;
+      }
+      const snapshot=await getDoc(item(code,'teacherMaterials',id));
       check(snapshot.exists(),'참고자료를 준비 중이에요. 잠시 후 다시 눌러 주세요.');
       const data=snapshot.data()!;
-      check(Number.isInteger(data.pageCount)&&data.pageCount>0&&data.pageCount<=50&&Number.isInteger(data.pdfChunkCount)&&data.pdfChunkCount>0&&data.pdfChunkCount<=20,'참고자료 정보를 확인하지 못했어요.');
-      const [pages,chunks]=await Promise.all([
-        Promise.all(Array.from({length:data.pageCount},(_,index)=>getDoc(item(code,'teacherMaterials',id+'-page-'+(index+1))))),
-        Promise.all(Array.from({length:data.pdfChunkCount},(_,index)=>getDoc(item(code,'teacherMaterials',id+'-pdf-'+(index+1)))))
-      ]);
-      check([...pages,...chunks].every(part=>part.exists()),'참고자료를 불러오지 못했어요. 다시 눌러 주세요.');
-      return {pdf:'data:application/pdf;base64,'+chunks.map(chunk=>chunk.data()!.base64).join(''),pages:pages.map(page=>page.data()!.imageData)};
+      check(data.pageCount===material.pageCount&&Number.isInteger(data.pdfChunkCount)&&data.pdfChunkCount>0&&data.pdfChunkCount<=20,'참고자료 정보를 확인하지 못했어요.');
+      if(path==='teacher/reference')return {pageCount:data.pageCount};
+      const chunks=await Promise.all(Array.from({length:data.pdfChunkCount},(_,index)=>getDoc(item(code,'teacherMaterials',id+'-pdf-'+(index+1)))));
+      check(chunks.every(part=>part.exists()),'원본 PDF를 불러오지 못했어요. 다시 눌러 주세요.');
+      return 'data:application/pdf;base64,'+chunks.map(chunk=>chunk.data()!.base64).join('');
     }
     if(path==='mission/submitters') {
       check(!isStudentAccount(user),'선생님만 제출 명단을 볼 수 있어요.');
