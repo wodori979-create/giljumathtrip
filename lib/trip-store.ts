@@ -1,3 +1,4 @@
+import {fetchMissionSubmitters} from './mission-submitters';
 import {onAuthStateChanged,signInWithEmailAndPassword,signOut} from 'firebase/auth';
 import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,query,where,orderBy,documentId,startAfter,limit,serverTimestamp,writeBatch,runTransaction,onSnapshot,type DocumentData,type DocumentSnapshot,type QuerySnapshot,type Query} from 'firebase/firestore';
 import {auth,db,emulator} from './firebase-client';
@@ -145,6 +146,11 @@ export async function api(path:string,body?:any):Promise<any> {
       check(!isStudentAccount(user),'선생님만 학생을 내보낼 수 있어요.');
       check(typeof body?.uid==='string'&&body.uid.length>0&&body.uid.length<=128&&!body.uid.includes('/')&&body.uid!==user.uid,'학생을 확인해 주세요.');
       const batch=writeBatch(db);batch.delete(item(code,'members',body.uid));batch.delete(item(code,'pushSubscriptions',body.uid));await batch.commit();return {ok:true};
+    }
+    if(path==='mission/submitters') {
+      check(!isStudentAccount(user),'선생님만 제출 명단을 볼 수 있어요.');
+      check(typeof body?.missionId==='string'&&MISSION_ID.test(body.missionId),'미션을 확인해 주세요.');
+      return await fetchMissionSubmitters({projectId:db.app.options.projectId!,code,missionId:body.missionId,token:await user.getIdToken(),emulator});
     }
     if(path==='mission/submissions') {
       check(!isStudentAccount(user),'선생님만 제출 사진을 볼 수 있어요.');

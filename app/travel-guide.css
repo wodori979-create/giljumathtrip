@@ -65,3 +65,12 @@
 .schedule-v3 .lined-timeline .event-name-row{position:relative;row-gap:10px}.schedule-v3 .lined-timeline .event-name-row.event-name-inline{grid-template-columns:minmax(0,1fr) auto;column-gap:24px;align-items:center}.schedule-v3 .lined-timeline .event-more-button{justify-self:end;min-height:40px;padding:8px 12px;font-size:15px;line-height:22px;gap:4px}.event-title-probe-box{position:absolute;visibility:hidden;width:0;height:0;overflow:hidden;contain:strict;left:0;top:0}.event-title-probe-box>span{display:inline-block;width:max-content;max-width:none;font-size:22px;white-space:nowrap}
 
 .schedule-detail .event-resource-link{margin:16px 0;font-size:18px;line-height:1.6}.event-resource-link>a{color:#087e78;text-decoration:underline;text-underline-offset:4px}.event-resource-link>a:focus-visible{outline:2px solid #087e78;outline-offset:4px}
+
+.mission-submission-roster{margin:16px 0 22px}
+.mission-roster-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mission-roster-group{padding:16px;border:1px solid #dce5df;border-radius:12px;background:#f7faf7;min-width:0}
+.mission-roster-group h3{margin:0 0 12px;font-size:19px;color:#172c28}
+.mission-roster-group h3 span{font-size:16px;color:#47665b}
+.mission-roster-group ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px 14px}
+.mission-roster-group li{font-size:18px;color:#111;overflow-wrap:anywhere}
+.mission-roster-group p{margin:0;color:#61736b}
