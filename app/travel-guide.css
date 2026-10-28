@@ -80,3 +80,7 @@
 .mission-title-controls h1{min-width:0;margin:0;overflow-wrap:anywhere}
 .mission-title-controls>.button{flex-shrink:0;white-space:nowrap}
 @media(max-width:760px){.mission-title-controls{gap:12px}.mission-title-controls>.button{font-size:14px;padding:12px 14px}}
+
+.schedule-v3 .event-lodging .lodging-copy{flex:1;min-width:0}
+.schedule-v3 .event-lodging b{font-size:14px;line-height:1.5;margin-bottom:5px}
+.schedule-v3 .event-lodging .fit-line{font-size:22px}
