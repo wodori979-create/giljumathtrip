@@ -90,3 +90,9 @@
 .reference-card{padding:24px}
 .reference-card h2{font-size:22px;margin-bottom:16px}
 .reference-card .event-photo-gallery{grid-template-columns:minmax(0,1fr);max-width:420px}
+
+.pdf-page-stack{min-width:100%;margin:0 auto}
+.pdf-page-stack>figure{margin:0 0 20px}
+.pdf-page-stack>figure:last-child{margin-bottom:0}
+.pdf-page-stack img{display:block;width:100%;height:auto;background:#fff}
+.pdf-page-stack figcaption{text-align:center;font-size:14px;padding:8px;color:#4c6558}
