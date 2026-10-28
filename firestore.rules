@@ -88,6 +88,10 @@ service cloud.firestore {
           && base(code).missionIds.hasAll(request.resource.data.completedMissions);
         allow delete: if false;
       }
+      match /teacherMaterials/{id} {
+        allow get: if owner(code);
+        allow list, create, update, delete: if false;
+      }
       match /eventDetails/{id} {
         allow get: if member(code);
         allow list, delete: if false;

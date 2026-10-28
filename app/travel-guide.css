@@ -84,3 +84,9 @@
 .schedule-v3 .event-lodging .lodging-copy{flex:1;min-width:0}
 .schedule-v3 .event-lodging b{font-size:14px;line-height:1.5;margin-bottom:5px}
 .schedule-v3 .event-lodging .fit-line{font-size:22px}
+
+.teacher-references .page-heading{align-items:center}
+.teacher-references .page-heading>svg{color:#087e78;flex-shrink:0}
+.reference-card{padding:24px}
+.reference-card h2{font-size:22px;margin-bottom:16px}
+.reference-card .event-photo-gallery{grid-template-columns:minmax(0,1fr);max-width:420px}

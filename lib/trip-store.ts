@@ -1,3 +1,4 @@
+import {teacherMaterials} from './teacher-materials';
 import {fetchMissionSubmitters} from './mission-submitters';
 import {onAuthStateChanged,signInWithEmailAndPassword,signOut} from 'firebase/auth';
 import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,query,where,orderBy,documentId,startAfter,limit,serverTimestamp,writeBatch,runTransaction,onSnapshot,type DocumentData,type DocumentSnapshot,type QuerySnapshot,type Query} from 'firebase/firestore';
@@ -146,6 +147,20 @@ export async function api(path:string,body?:any):Promise<any> {
       check(!isStudentAccount(user),'선생님만 학생을 내보낼 수 있어요.');
       check(typeof body?.uid==='string'&&body.uid.length>0&&body.uid.length<=128&&!body.uid.includes('/')&&body.uid!==user.uid,'학생을 확인해 주세요.');
       const batch=writeBatch(db);batch.delete(item(code,'members',body.uid));batch.delete(item(code,'pushSubscriptions',body.uid));await batch.commit();return {ok:true};
+    }
+    if(path==='teacher/reference') {
+      check(!isStudentAccount(user),'선생님만 참고자료를 볼 수 있어요.');
+      check(teacherMaterials.some(material=>material.id===body?.id),'참고자료를 확인해 주세요.');
+      const id=body.id,snapshot=await getDoc(item(code,'teacherMaterials',id));
+      check(snapshot.exists(),'참고자료를 준비 중이에요. 잠시 후 다시 눌러 주세요.');
+      const data=snapshot.data()!;
+      check(Number.isInteger(data.pageCount)&&data.pageCount>0&&data.pageCount<=50&&Number.isInteger(data.pdfChunkCount)&&data.pdfChunkCount>0&&data.pdfChunkCount<=20,'참고자료 정보를 확인하지 못했어요.');
+      const [pages,chunks]=await Promise.all([
+        Promise.all(Array.from({length:data.pageCount},(_,index)=>getDoc(item(code,'teacherMaterials',id+'-page-'+(index+1))))),
+        Promise.all(Array.from({length:data.pdfChunkCount},(_,index)=>getDoc(item(code,'teacherMaterials',id+'-pdf-'+(index+1)))))
+      ]);
+      check([...pages,...chunks].every(part=>part.exists()),'참고자료를 불러오지 못했어요. 다시 눌러 주세요.');
+      return {pdf:'data:application/pdf;base64,'+chunks.map(chunk=>chunk.data()!.base64).join(''),pages:pages.map(page=>page.data()!.imageData)};
     }
     if(path==='mission/submitters') {
       check(!isStudentAccount(user),'선생님만 제출 명단을 볼 수 있어요.');
