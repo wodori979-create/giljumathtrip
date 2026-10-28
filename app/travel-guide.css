@@ -96,3 +96,6 @@
 .pdf-page-stack>figure:last-child{margin-bottom:0}
 .pdf-page-stack img{display:block;width:100%;height:auto;background:#fff}
 .pdf-page-stack figcaption{text-align:center;font-size:14px;padding:8px;color:#4c6558}
+
+.event-photo-zoom{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap}
+.event-photo-zoom>span{font-size:14px;min-width:44px;text-align:center}
