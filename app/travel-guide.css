@@ -107,3 +107,9 @@
 .event-photo-tools>.pdf-original-button{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;font-size:14px}
 .pdf-load-error{padding:12px;color:#8d3434}
 .pdf-load-error>button{padding:8px 12px;margin-top:8px}
+
+.event-photo-viewport{min-width:0;position:relative;touch-action:none;overflow-anchor:none;user-select:none;-webkit-user-select:none;cursor:grab;-webkit-overflow-scrolling:touch;padding-bottom:max(36px,env(safe-area-inset-bottom))}
+.event-photo-viewport.is-panning{cursor:grabbing}
+.event-photo-viewport img{user-select:none;-webkit-user-drag:none;-webkit-touch-callout:none}
+.pdf-page-stack{display:flow-root}
+.event-photo-viewer{right:auto;bottom:auto}
