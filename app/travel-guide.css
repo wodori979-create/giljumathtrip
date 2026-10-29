@@ -116,3 +116,12 @@
 
 .history .resend-alert{font-size:14px;min-height:38px;padding:8px 12px;white-space:nowrap}
 .resend-report{padding:4px 8px 12px;color:#47675c;font-size:14px;line-height:1.6}
+
+.teacher-alert .history-row{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:12px}
+.teacher-alert .history-copy{min-width:0}
+.teacher-alert .history-copy>b{display:block;font-size:18px;line-height:1.5}
+.teacher-alert .history-copy>p{font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.teacher-alert .history-copy>.history-note{font-size:16px;color:#394f45;white-space:pre-wrap;margin-top:8px}
+.teacher-alert .history-actions{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.teacher-alert .history-actions>.pill{margin-left:0;white-space:nowrap;font-size:12px}
+.student-meeting .meeting-info-panel .meeting-message,.notice-modal.photo-notice>.notice-message{font-size:20px;line-height:1.8;color:#111;white-space:pre-wrap;overflow-wrap:anywhere;text-align:left}
