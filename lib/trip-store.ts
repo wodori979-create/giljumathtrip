@@ -202,6 +202,18 @@ export async function api(path:string,body?:any):Promise<any> {
       const meeting=meetingData(body,photoId(code,body.photoUrl||'')),id=crypto.randomUUID(),batch=writeBatch(db);
       batch.set(item(code,'alerts',id),{...meeting,createdAt:serverTimestamp()});batch.update(ref,{meeting,updatedAt:serverTimestamp()});await batch.commit();return {ok:true,alertId:id,push:await sendPush(code,id)};
     }
+    if(path==='alert/resend') {
+      check(!isStudentAccount(user),'선생님만 집합 안내를 다시 보낼 수 있어요.');
+      check(typeof body?.id==='string'&&/^[a-f0-9-]{36}$/.test(body.id),'집합 안내를 확인해 주세요.');
+      const id=crypto.randomUUID();
+      await runTransaction(db,async tx=>{
+        const original=await tx.get(item(code,'alerts',body.id));
+        check(original.exists(),'삭제된 집합 안내예요. 목록을 새로 확인해 주세요.');
+        const data=original.data()!,meeting=meetingData(data,data.photoId||'');
+        tx.set(item(code,'alerts',id),{...meeting,createdAt:serverTimestamp()});
+      });
+      return {ok:true,alertId:id,push:await sendPush(code,id)};
+    }
     if(path==='alert/remove'){check(/^[a-f0-9-]{36}$/.test(body.id),'집합 안내를 확인해 주세요.');await deleteDoc(item(code,'alerts',body.id));return {ok:true};}
     if(path==='push/retry')return {ok:true,alertId:body.id,push:await sendPush(code,body.id)};
     if(path==='ack') {const receipt=item(code,'receipts',body.id+'_'+user.uid);await runTransaction(db,async tx=>{if(!(await tx.get(receipt)).exists())tx.set(receipt,{alertId:body.id,studentUid:user.uid,createdAt:serverTimestamp()});});return {ok:true};}

@@ -113,3 +113,6 @@
 .event-photo-viewport img{user-select:none;-webkit-user-drag:none;-webkit-touch-callout:none}
 .pdf-page-stack{display:flow-root}
 .event-photo-viewer{right:auto;bottom:auto}
+
+.history .resend-alert{font-size:14px;min-height:38px;padding:8px 12px;white-space:nowrap}
+.resend-report{padding:4px 8px 12px;color:#47675c;font-size:14px;line-height:1.6}
